@@ -130,8 +130,33 @@ function checkForUpdate(manual = false) {
   
   isManualCheck = manual;
   console.log('正在检查更新...' + (manual ? '（手动）' : '（自动）'));
+  
+  // 优先使用 Gitee 更新源（国内访问更快）
+  const giteeFeedURL = 'https://gitee.com/europe-and-oceania/daily-planner/releases/download/latest';
+  
+  try {
+    // 设置更新源为 Gitee
+    autoUpdater.setFeedURL({
+      provider: 'generic',
+      url: giteeFeedURL
+    });
+    console.log('使用 Gitee 更新源:', giteeFeedURL);
+  } catch (e) {
+    console.log('设置 Gitee 更新源失败，使用默认配置:', e.message);
+  }
+  
   autoUpdater.checkForUpdates().catch(err => {
     console.error('检查更新失败:', err);
+    // 如果 Gitee 失败，尝试 GitHub
+    console.log('尝试使用 GitHub 更新源...');
+    autoUpdater.setFeedURL({
+      provider: 'github',
+      owner: 'ol2421040503-jpg',
+      repo: 'daily-planner'
+    });
+    autoUpdater.checkForUpdates().catch(err2 => {
+      console.error('GitHub 更新源也失败:', err2);
+    });
   });
 }
 

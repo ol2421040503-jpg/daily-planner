@@ -53,7 +53,8 @@ jobs:
             ## 每日规划 v${{ steps.version.outputs.VERSION }}
             
             ### 下载
-            - Windows 用户下载 `每日规划 Setup ${{ steps.version.outputs.VERSION }}.exe`
+            - Windows 用户下载 `Setup.${{ steps.version.outputs.VERSION }}.exe`
+            - 国内用户可从 [Gitee Releases](https://gitee.com/europe-and-oceania/daily-planner/releases) 下载，速度更快
             
             ### 更新说明
             请查看下方的 commits 记录
@@ -63,3 +64,68 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare Gitee Release Files
+        run: |
+          # 重命名安装包为标准名称
+          $version = "${{ steps.version.outputs.VERSION }}"
+          Copy-Item "dist-electron/Setup.$version.exe" "daily-planner-setup.exe"
+          Copy-Item "dist-electron/latest.yml" "latest.yml"
+          
+          # 创建 Gitee 更新用的 latest.yml（使用 Gitee 下载地址）
+          $content = Get-Content "dist-electron/latest.yml" -Raw
+          $giteeContent = $content -replace "https://github.com/[^`"]*", "https://gitee.com/europe-and-oceania/daily-planner/releases/download/v$version"
+          Set-Content "latest-gitee.yml" -Value $giteeContent
+          
+          Write-Host "准备完成："
+          Get-ChildItem *.exe, *.yml
+
+      - name: Upload to Gitee Release
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          $version = "${{ steps.version.outputs.VERSION }}"
+          $tagName = "v$version"
+          
+          Write-Host "正在创建 Gitee Release..."
+          
+          # 创建 Gitee Release
+          $body = @{
+            access_token = $env:GITEE_TOKEN
+            tag_name = $tagName
+            name = "每日规划 v$version"
+            body = "## 每日规划 v$version`n`n### 国内快速下载`n- Windows 用户下载 `daily-planner-setup.exe``n`n### 更新说明`n请查看 GitHub Releases 页面获取详细更新内容。`n`n---`n> 作者：严辉村高斯林"
+            prerelease = $false
+          } | ConvertTo-Json -Depth 10
+          
+          $response = Invoke-RestMethod -Uri "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases" -Method Post -Body $body -ContentType "application/json"
+          
+          Write-Host "Gitee Release 创建成功，ID: $($response.id)"
+          
+          # 上传安装包到 Gitee Release
+          $releaseId = $response.id
+          
+          Write-Host "正在上传安装包到 Gitee..."
+          
+          $uploadUrl = "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases/$releaseId/attach_files"
+          
+          # 上传 exe 文件
+          $fileBytes = [System.IO.File]::ReadAllBytes("daily-planner-setup.exe")
+          $boundary = [System.Guid]::NewGuid().ToString()
+          $LF = "`r`n"
+          
+          $bodyLines = (
+            "--$boundary",
+            "Content-Disposition: form-data; name=`"access_token`"$LF",
+            $env:GITEE_TOKEN,
+            "--$boundary",
+            "Content-Disposition: form-data; name=`"file`"; filename=`"daily-planner-setup.exe`"",
+            "Content-Type: application/octet-stream$LF",
+            [System.Text.Encoding]::GetEncoding("ISO-8859-1").GetString($fileBytes),
+            "--$boundary--$LF"
+          ) -join $LF
+          
+          Invoke-RestMethod -Uri $uploadUrl -Method Post -Body $bodyLines -ContentType "multipart/form-data; boundary=$boundary"
+          
+          Write-Host "✅ 安装包已上传到 Gitee Release"
+

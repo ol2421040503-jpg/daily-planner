@@ -1,0 +1,68 @@
+name: Sync to Gitee
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Push to Gitee
+        run: |
+          # 添加 Gitee 远程仓库
+          git remote add gitee https://${{ secrets.GITEE_TOKEN }}@gitee.com/europe-and-oceania/daily-planner.git
+          
+          # 推送所有分支
+          git push gitee --all --force
+          
+          # 推送所有标签
+          git push gitee --tags --force
+          
+          echo "✅ 已同步到 Gitee"
+
+      - name: Upload Release to Gitee (if tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}
+          
+          echo "正在上传 Release ${TAG_NAME} 到 Gitee..."
+          
+          # 创建 Gitee Release
+          RESPONSE=$(curl -s -X POST "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"access_token\": \"${{ secrets.GITEE_TOKEN }}\",
+              \"tag_name\": \"${TAG_NAME}\",
+              \"name\": \"每日规划 v${VERSION}\",
+              \"body\": \"## 每日规划 v${VERSION}\\n\\n### 更新说明\\n请查看 GitHub Releases 页面获取详细更新内容。\\n\\n---\\n> 作者：严辉村高斯林\",
+              \"prerelease\": false
+            }")
+          
+          echo "Gitee Release 响应: ${RESPONSE}"
+          
+          # 获取 Release ID
+          RELEASE_ID=$(echo ${RESPONSE} | jq -r '.id')
+          
+          if [ "$RELEASE_ID" != "null" ]; then
+            echo "✅ Gitee Release 创建成功，ID: ${RELEASE_ID}"
+          else
+            echo "❌ Gitee Release 创建失败"
+            echo "${RESPONSE}"
+          fi
