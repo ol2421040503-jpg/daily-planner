@@ -1,0 +1,81 @@
+{
+  "name": "daily-planner",
+  "version": "1.0.0",
+  "description": "每日规划应用 - 简洁高效的桌面任务管理工具",
+  "author": "严辉村高斯林",
+  "license": "MIT",
+  "main": "electron/main.js",
+  "scripts": {
+    "build": "npx vite build",
+    "dev": "npx vite",
+    "preinstall": "npx only-allow pnpm",
+    "lint": "eslint",
+    "start": "npx electron .",
+    "ts-check": "tsc -p tsconfig.json",
+    "electron:dev": "cross-env NODE_ENV=development electron .",
+    "electron:build": "pnpm build && electron-builder --win",
+    "electron:pack": "electron-builder --dir"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.95.3",
+    "dotenv": "^17.2.3",
+    "electron-updater": "^6.1.7",
+    "lunar-javascript": "^1.7.7"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "coze-coding-dev-sdk": "^0.7.17",
+    "cross-env": "^7.0.3",
+    "electron": "^35.0.0",
+    "electron-builder": "^26.8.1",
+    "eslint": "^9",
+    "only-allow": "^1.2.2",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8",
+    "vite": "^7.2.4"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "pnpm": ">=9.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "esbuild": "^0.27.2"
+    }
+  },
+  "build": {
+    "appId": "com.dailyplanner.app",
+    "productName": "每日规划",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "ol2421040503-jpg",
+      "repo": "daily-planner"
+    }
+  }
+}

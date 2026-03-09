@@ -1,0 +1,128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* 任务面板滑入动画 */
+.task-panel {
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.task-panel.show {
+  transform: translateY(0);
+}
+
+/* 统计弹窗淡入缩放动画 */
+.stats-modal {
+  opacity: 0;
+  transform: scale(0.9) translateY(-20px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stats-modal.show {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+/* 背景遮罩淡入效果 */
+.modal-backdrop {
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.modal-backdrop.show {
+  opacity: 1;
+}
+
+/* 日历卡片悬停效果 */
+.calendar-day {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.calendar-day:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 统计卡片悬停效果 */
+.stats-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stats-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* 任务完成动画 */
+@keyframes taskComplete {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.02);
+  }
+  50% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes checkmarkPop {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.task-checkbox:checked {
+  animation: checkmarkPop 0.3s ease-out;
+}
+
+.task-completed {
+  animation: taskComplete 0.4s ease-out;
+  background: linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.1), transparent);
+}
+
+/* 任务项悬停编辑提示 */
+.task-text:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+}
+
+/* 键盘快捷键提示 */
+.shortcut-hint {
+  font-size: 10px;
+  color: #9ca3af;
+  background: rgba(156, 163, 175, 0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 4px;
+}

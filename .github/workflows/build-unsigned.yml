@@ -1,0 +1,65 @@
+name: Build and Release (No Signing)
+
+on:
+  push:
+    tags:
+      - 'v*' # 当推送 v 开头的 tag 时触发，如 v1.0.0
+  workflow_dispatch: # 也支持手动触发
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Get version from package.json
+        id: version
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          echo "Building version: $version"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build frontend
+        run: pnpm build
+
+      - name: Build Electron app
+        run: pnpm electron:build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist-electron/*.exe
+            dist-electron/*.yml
+            dist-electron/*.blockmap
+          body: |
+            ## 每日规划 v${{ steps.version.outputs.VERSION }}
+            
+            ### 下载
+            - Windows 用户下载 `每日规划 Setup ${{ steps.version.outputs.VERSION }}.exe`
+            
+            ### 更新说明
+            请查看下方的 commits 记录
+            
+            ---
+            > 作者：严辉村高斯林
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
