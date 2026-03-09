@@ -78,7 +78,8 @@ jobs:
 
       - name: Push to Gitee
         run: |
-          git remote add gitee https://${{ secrets.GITEE_TOKEN }}@gitee.com/europe-and-oceania/daily-planner.git
+          # Gitee 使用 OAuth2 格式认证
+          git remote add gitee https://oauth2:${{ secrets.GITEE_TOKEN }}@gitee.com/europe-and-oceania/daily-planner.git
           git push gitee --all --force
           git push gitee --tags --force
           echo "✅ 代码已同步到 Gitee"
