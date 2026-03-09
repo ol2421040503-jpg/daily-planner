@@ -65,67 +65,64 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Prepare Gitee Release Files
-        run: |
-          # 重命名安装包为标准名称
-          $version = "${{ steps.version.outputs.VERSION }}"
-          Copy-Item "dist-electron/Setup.$version.exe" "daily-planner-setup.exe"
-          Copy-Item "dist-electron/latest.yml" "latest.yml"
-          
-          # 创建 Gitee 更新用的 latest.yml（使用 Gitee 下载地址）
-          $content = Get-Content "dist-electron/latest.yml" -Raw
-          $giteeContent = $content -replace "https://github.com/[^`"]*", "https://gitee.com/europe-and-oceania/daily-planner/releases/download/v$version"
-          Set-Content "latest-gitee.yml" -Value $giteeContent
-          
-          Write-Host "准备完成："
-          Get-ChildItem *.exe, *.yml
+  # 同步到 Gitee（单独的 job，不阻塞主构建）
+  sync-to-gitee:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Upload to Gitee Release
-        env:
-          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+      - name: Push to Gitee
         run: |
-          $version = "${{ steps.version.outputs.VERSION }}"
-          $tagName = "v$version"
-          
-          Write-Host "正在创建 Gitee Release..."
-          
-          # 创建 Gitee Release
-          $body = @{
-            access_token = $env:GITEE_TOKEN
-            tag_name = $tagName
-            name = "每日规划 v$version"
-            body = "## 每日规划 v$version`n`n### 国内快速下载`n- Windows 用户下载 `daily-planner-setup.exe``n`n### 更新说明`n请查看 GitHub Releases 页面获取详细更新内容。`n`n---`n> 作者：严辉村高斯林"
-            prerelease = $false
-          } | ConvertTo-Json -Depth 10
-          
-          $response = Invoke-RestMethod -Uri "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases" -Method Post -Body $body -ContentType "application/json"
-          
-          Write-Host "Gitee Release 创建成功，ID: $($response.id)"
-          
-          # 上传安装包到 Gitee Release
-          $releaseId = $response.id
-          
-          Write-Host "正在上传安装包到 Gitee..."
-          
-          $uploadUrl = "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases/$releaseId/attach_files"
-          
-          # 上传 exe 文件
-          $fileBytes = [System.IO.File]::ReadAllBytes("daily-planner-setup.exe")
-          $boundary = [System.Guid]::NewGuid().ToString()
-          $LF = "`r`n"
-          
-          $bodyLines = (
-            "--$boundary",
-            "Content-Disposition: form-data; name=`"access_token`"$LF",
-            $env:GITEE_TOKEN,
-            "--$boundary",
-            "Content-Disposition: form-data; name=`"file`"; filename=`"daily-planner-setup.exe`"",
-            "Content-Type: application/octet-stream$LF",
-            [System.Text.Encoding]::GetEncoding("ISO-8859-1").GetString($fileBytes),
-            "--$boundary--$LF"
-          ) -join $LF
-          
-          Invoke-RestMethod -Uri $uploadUrl -Method Post -Body $bodyLines -ContentType "multipart/form-data; boundary=$boundary"
-          
-          Write-Host "✅ 安装包已上传到 Gitee Release"
+          git remote add gitee https://${{ secrets.GITEE_TOKEN }}@gitee.com/europe-and-oceania/daily-planner.git
+          git push gitee --all --force
+          git push gitee --tags --force
+          echo "✅ 代码已同步到 Gitee"
 
+      - name: Create Gitee Release
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}
+          
+          echo "正在创建 Gitee Release ${TAG_NAME}..."
+          
+          # 创建 Release
+          curl -X POST "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"access_token\": \"${{ secrets.GITEE_TOKEN }}\",
+              \"tag_name\": \"${TAG_NAME}\",
+              \"name\": \"每日规划 v${VERSION}\",
+              \"body\": \"## 每日规划 v${VERSION}\\n\\n### 国内快速下载\\n请从下方 Assets 下载安装包。\\n\\n### 更新说明\\n请查看 GitHub Releases 页面获取详细更新内容。\\n\\n---\\n> 作者：严辉村高斯林\",
+              \"prerelease\": false
+            }"
+          
+          echo "✅ Gitee Release 创建完成"
+
+      - name: Download and Upload to Gitee
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}
+          
+          # 下载 GitHub Release 文件
+          echo "正在从 GitHub 下载安装包..."
+          curl -L -o daily-planner-setup.exe \
+            "https://github.com/ol2421040503-jpg/daily-planner/releases/download/${TAG_NAME}/Setup.${VERSION}.exe"
+          
+          # 获取 Gitee Release ID
+          RELEASE_INFO=$(curl -s "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases/tags/${TAG_NAME}?access_token=${{ secrets.GITEE_TOKEN }}")
+          RELEASE_ID=$(echo $RELEASE_INFO | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
+          
+          echo "Gitee Release ID: ${RELEASE_ID}"
+          
+          # 上传文件到 Gitee Release
+          echo "正在上传安装包到 Gitee..."
+          curl -X POST \
+            "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases/${RELEASE_ID}/attach_files?access_token=${{ secrets.GITEE_TOKEN }}" \
+            -F "file=@daily-planner-setup.exe"
+          
+          echo "✅ 安装包已上传到 Gitee"
