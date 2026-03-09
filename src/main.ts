@@ -52,6 +52,8 @@ declare global {
       onDownloadProgress: (callback: (progress: { percent: number; transferred: number; total: number }) => void) => void;
       onUpdateDownloaded: (callback: (info: { version: string }) => void) => void;
       onUpdateError: (callback: (error: string) => void) => void;
+      // 窗口准备完成
+      onWindowReady: (callback: () => void) => void;
       // 清理
       removeAllListeners: (channel: string) => void;
     };
@@ -781,6 +783,15 @@ class DailyPlanner {
   private initElectronAPI(): void {
     // 检查是否在 Electron 环境中
     if (window.electronAPI) {
+      // 监听窗口准备完成事件
+      window.electronAPI.onWindowReady(() => {
+        console.log('[Electron] 窗口准备完成');
+        // 确保 DOM 渲染完成后重新渲染
+        requestAnimationFrame(() => {
+          this.render();
+        });
+      });
+
       // 获取窗口置顶状态
       window.electronAPI.isAlwaysOnTop().then(isOnTop => {
         this.isAlwaysOnTop = isOnTop;

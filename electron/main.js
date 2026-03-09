@@ -21,6 +21,26 @@ const APP_VERSION = '1.0.0';
 let updateDownloaded = false;
 let updateInfo = null;
 
+// ==================== 单例模式 ====================
+// 防止多个实例运行
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  // 如果已经有实例在运行，直接退出
+  app.quit();
+} else {
+  // 当第二个实例启动时，聚焦到已有的窗口
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
+
 // 提醒配置
 const REMINDER_CONFIG = {
   anniversary: 3,      // 纪念日提前3天
@@ -137,6 +157,11 @@ let isAlwaysOnTop = false;  // 窗口置顶状态
 
 // 创建窗口
 function createWindow() {
+  // 图标路径：开发环境用 public，生产环境用 dist
+  const iconPath = process.env.NODE_ENV === 'development' 
+    ? path.join(__dirname, '../public/icon.png')
+    : path.join(__dirname, '../dist/icon.png');
+  
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -148,10 +173,12 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      partition: 'persist:daily-planner'  // 持久化存储，防止数据丢失
     },
     title: '每日规划',
-    icon: path.join(__dirname, '../public/icon.png')
+    icon: iconPath,
+    show: false  // 先隐藏，等加载完成后再显示
   });
 
   // 在开发环境中加载本地服务器
@@ -161,6 +188,19 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
+
+  // 页面加载完成后显示窗口并聚焦输入框
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    mainWindow.focus();
+    // 确保 webContents 完全加载后再发送聚焦事件
+    mainWindow.webContents.on('did-finish-load', () => {
+      // 延迟一点确保 DOM 完全渲染
+      setTimeout(() => {
+        mainWindow.webContents.send('window-ready');
+      }, 100);
+    });
+  });
 
   // 点击关闭按钮时最小化到托盘
   mainWindow.on('close', (event) => {
@@ -182,8 +222,11 @@ function createWindow() {
 
 // 创建系统托盘
 function createTray() {
-  // 创建托盘图标
-  const iconPath = path.join(__dirname, '../public/icon.png');
+  // 托盘图标路径：开发环境用 public，生产环境用 dist
+  const iconPath = process.env.NODE_ENV === 'development' 
+    ? path.join(__dirname, '../public/icon.png')
+    : path.join(__dirname, '../dist/icon.png');
+  
   const trayIcon = nativeImage.createFromPath(iconPath);
   
   tray = new Tray(trayIcon.resize({ width: 16, height: 16 }));

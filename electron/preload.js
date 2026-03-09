@@ -104,6 +104,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('show-stats', callback);
   },
 
+  // 监听窗口准备完成
+  onWindowReady: (callback) => {
+    ipcRenderer.on('window-ready', callback);
+  },
+
   // ==================== 应用设置相关 ====================
   
   // 获取应用版本
