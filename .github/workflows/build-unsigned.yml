@@ -65,10 +65,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # 同步到 Gitee（单独的 job，不阻塞主构建）
+  # 同步代码到 Gitee（不包含安装包，安装包需手动上传）
   sync-to-gitee:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     
     steps:
       - name: Checkout code
@@ -78,7 +79,6 @@ jobs:
 
       - name: Push to Gitee
         run: |
-          # Gitee 使用 OAuth2 格式认证
           git remote add gitee https://oauth2:${{ secrets.GITEE_TOKEN }}@gitee.com/europe-and-oceania/daily-planner.git
           git push gitee --all --force
           git push gitee --tags --force
@@ -92,38 +92,17 @@ jobs:
           echo "正在创建 Gitee Release ${TAG_NAME}..."
           
           # 创建 Release
-          curl -X POST "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases" \
+          RESPONSE=$(curl -s -X POST "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases" \
             -H "Content-Type: application/json" \
             -d "{
               \"access_token\": \"${{ secrets.GITEE_TOKEN }}\",
               \"tag_name\": \"${TAG_NAME}\",
               \"name\": \"每日规划 v${VERSION}\",
-              \"body\": \"## 每日规划 v${VERSION}\\n\\n### 国内快速下载\\n请从下方 Assets 下载安装包。\\n\\n### 更新说明\\n请查看 GitHub Releases 页面获取详细更新内容。\\n\\n---\\n> 作者：严辉村高斯林\",
+              \"body\": \"## 每日规划 v${VERSION}\\n\\n### 国内快速下载\\n请从 GitHub Releases 页面下载安装包，然后手动上传到此处。\\n\\nGitHub Releases: https://github.com/ol2421040503-jpg/daily-planner/releases\\n\\n### 更新说明\\n请查看 GitHub Releases 页面获取详细更新内容。\\n\\n---\\n> 作者：严辉村高斯林\",
               \"prerelease\": false
-            }"
+            }")
           
+          echo "Gitee Release 响应: ${RESPONSE}"
           echo "✅ Gitee Release 创建完成"
-
-      - name: Download and Upload to Gitee
-        run: |
-          TAG_NAME=${GITHUB_REF#refs/tags/}
-          VERSION=${TAG_NAME#v}
-          
-          # 下载 GitHub Release 文件
-          echo "正在从 GitHub 下载安装包..."
-          curl -L -o daily-planner-setup.exe \
-            "https://github.com/ol2421040503-jpg/daily-planner/releases/download/${TAG_NAME}/Setup.${VERSION}.exe"
-          
-          # 获取 Gitee Release ID
-          RELEASE_INFO=$(curl -s "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases/tags/${TAG_NAME}?access_token=${{ secrets.GITEE_TOKEN }}")
-          RELEASE_ID=$(echo $RELEASE_INFO | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
-          
-          echo "Gitee Release ID: ${RELEASE_ID}"
-          
-          # 上传文件到 Gitee Release
-          echo "正在上传安装包到 Gitee..."
-          curl -X POST \
-            "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases/${RELEASE_ID}/attach_files?access_token=${{ secrets.GITEE_TOKEN }}" \
-            -F "file=@daily-planner-setup.exe"
-          
-          echo "✅ 安装包已上传到 Gitee"
+          echo ""
+          echo "⚠️ 请手动下载 GitHub 安装包并上传到 Gitee Release"
