@@ -43,6 +43,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer
+          path: |
+            dist-electron/*.exe
+            dist-electron/*.yml
+            dist-electron/*.blockmap
+          retention-days: 1
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -54,7 +64,7 @@ jobs:
             ## 每日规划 v${{ steps.version.outputs.VERSION }}
             
             ### 下载安装
-            - Windows 用户下载 `Setup.${{ steps.version.outputs.VERSION }}.exe`
+            - Windows 用户下载 `daily-planner-setup-${{ steps.version.outputs.VERSION }}.exe`
             
             ### 更新说明
             请查看下方的 commits 记录
@@ -65,7 +75,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # 同步代码到 Gitee（不上传安装包）
+  # 同步代码到 Gitee 并上传 latest.yml
   sync-to-gitee:
     needs: build
     runs-on: ubuntu-latest
@@ -76,6 +86,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: installer
+          path: ./installer
+
       - name: Push to Gitee
         run: |
           git remote add gitee https://oauth2:${{ secrets.GITEE_TOKEN }}@gitee.com/europe-and-oceania/daily-planner.git
@@ -83,7 +99,8 @@ jobs:
           git push gitee --tags --force
           echo "✅ 代码已同步到 Gitee"
 
-      - name: Create Gitee Release (without assets)
+      - name: Create Gitee Release
+        id: create_release
         run: |
           TAG_NAME=${GITHUB_REF#refs/tags/}
           VERSION=${TAG_NAME#v}
@@ -91,16 +108,40 @@ jobs:
           
           echo "🚀 创建 Gitee Release ${TAG_NAME}..."
           
-          curl -s -X POST "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases" \
+          RELEASE_RESPONSE=$(curl -s -X POST "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases" \
             -H "Content-Type: application/json" \
             -d "{
               \"access_token\": \"${{ secrets.GITEE_TOKEN }}\",
               \"tag_name\": \"${TAG_NAME}\",
               \"target_commitish\": \"${COMMIT_SHA}\",
               \"name\": \"每日规划 v${VERSION}\",
-              \"body\": \"## 每日规划 v${VERSION}\\n\\n### 📥 下载安装包\\n请前往 [GitHub Releases](https://github.com/ol2421040503-jpg/daily-planner/releases/tag/${TAG_NAME}) 下载安装包\\n\\n### 更新说明\\n请查看 GitHub Releases 获取详细更新内容。\\n\\n---\\n> 作者：严辉村高斯林\",
+              \"body\": \"## 每日规划 v${VERSION}\\n\\n### 下载安装\\n请下载下方的安装包\\n\\n### 更新说明\\n请查看 [GitHub Releases](https://github.com/ol2421040503-jpg/daily-planner/releases/tag/${TAG_NAME}) 获取详细更新内容。\\n\\n---\\n> 作者：严辉村高斯林\",
               \"prerelease\": false
-            }"
+            }")
           
-          echo ""
-          echo "✅ Gitee Release 创建完成"
+          echo "Release 响应: ${RELEASE_RESPONSE}"
+          
+          RELEASE_ID=$(echo "${RELEASE_RESPONSE}" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
+          echo "Release ID: ${RELEASE_ID}"
+          echo "release_id=${RELEASE_ID}" >> $GITHUB_OUTPUT
+
+      - name: Upload latest.yml to Gitee
+        env:
+          RELEASE_ID: ${{ steps.create_release.outputs.release_id }}
+        run: |
+          echo "📤 上传 latest.yml 到 Gitee..."
+          
+          # 找到 latest.yml 文件
+          YML_FILE=$(find ./installer -name "latest.yml" | head -1)
+          
+          if [ -n "$YML_FILE" ]; then
+            echo "上传: $(basename $YML_FILE)"
+            curl -s -X POST \
+              "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases/${RELEASE_ID}/attach_files" \
+              -F "access_token=${{ secrets.GITEE_TOKEN }}" \
+              -F "file=@${YML_FILE}"
+            echo ""
+            echo "✅ latest.yml 上传完成"
+          else
+            echo "❌ 未找到 latest.yml 文件"
+          fi
