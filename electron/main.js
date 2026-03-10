@@ -184,10 +184,10 @@ function createWindow() {
     : path.join(__dirname, '../dist/icon.png');
   
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 800,
-    minHeight: 600,
+    width: 1400,
+    height: 900,
+    minWidth: 1000,
+    minHeight: 700,
     frame: false,  // 无边框窗口，自定义标题栏
     transparent: false,
     alwaysOnTop: false,  // 默认不置顶
