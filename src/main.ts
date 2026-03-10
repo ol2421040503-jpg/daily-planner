@@ -241,7 +241,7 @@ interface MonthlyStats {
 type MonthlyFilter = 'all' | 'completed' | 'pending';
 
 // 视图模式类型
-type ViewMode = 'month' | 'week' | 'day';
+type ViewMode = 'month' | 'week';
 
 // 主题模式类型
 type ThemeMode = 'light' | 'dark';
@@ -1472,6 +1472,12 @@ class DailyPlanner {
   private setViewMode(mode: ViewMode): void {
     this.viewMode = mode;
     this.saveViewMode(mode);
+    
+    // 如果切换到周视图，跳转到选中日期所在的周
+    if (mode === 'week' && this.selectedDate) {
+      this.currentDate = new Date(this.selectedDate);
+    }
+    
     this.render();
   }
 
@@ -3686,8 +3692,8 @@ class DailyPlanner {
       return baseClass;
     };
 
-    const statsTitle = this.viewMode === 'month' ? '本月任务统计' : this.viewMode === 'week' ? '本周任务统计' : '今日任务统计';
-    const overviewTitle = this.viewMode === 'month' ? '本月任务概览' : this.viewMode === 'week' ? '本周任务概览' : '今日任务概览';
+    const statsTitle = this.viewMode === 'month' ? '本月任务统计' : '本周任务统计';
+    const overviewTitle = this.viewMode === 'month' ? '本月任务概览' : '本周任务概览';
 
     return `
       <div class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
@@ -4532,7 +4538,7 @@ class DailyPlanner {
       <div class="min-h-screen bg-gradient-to-br ${bgFrom} ${bgTo} ${window.electronAPI ? 'pt-10' : 'py-8'} px-4 transition-colors" tabindex="0" id="main-container">
         <div class="max-w-4xl mx-auto">
           <div class="flex items-center justify-between mb-6 relative z-50 flex-wrap gap-2">
-            <h1 class="text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}">${this.viewMode === 'month' ? '每日规划' : this.viewMode === 'week' ? '周规划' : '日规划'}</h1>
+            <h1 class="text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}">${this.viewMode === 'month' ? '每日规划' : '周规划'}</h1>
             <div class="flex items-center gap-2 flex-wrap">
               <button onclick="planner.jumpToToday()"
                       class="px-3 py-2 ${isDark ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white rounded-lg transition-colors shadow-md text-sm font-medium"
@@ -4547,10 +4553,6 @@ class DailyPlanner {
                 <button onclick="planner.setViewMode('week')"
                         class="px-3 py-2 text-sm font-medium transition-colors border-l ${isDark ? 'border-gray-600' : 'border-gray-200'} ${this.viewMode === 'week' ? 'bg-blue-500 text-white' : isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-white text-gray-700 hover:bg-gray-100'}">
                   周
-                </button>
-                <button onclick="planner.setViewMode('day')"
-                        class="px-3 py-2 text-sm font-medium transition-colors border-l ${isDark ? 'border-gray-600' : 'border-gray-200'} ${this.viewMode === 'day' ? 'bg-blue-500 text-white' : isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-white text-gray-700 hover:bg-gray-100'}">
-                  日
                 </button>
               </div>
               <button onclick="planner.showSearchPanel = true; planner.render();"
@@ -4611,7 +4613,7 @@ class DailyPlanner {
               </button>
             </div>
           </div>
-          ${this.viewMode === 'month' ? this.generateCalendarHTML() : this.viewMode === 'week' ? this.generateWeekViewHTML() : this.generateDayViewHTML()}
+          ${this.viewMode === 'month' ? this.generateCalendarHTML() : this.generateWeekViewHTML()}
         </div>
       </div>
       ${this.generateTaskPanelHTML()}
@@ -4811,7 +4813,7 @@ export function initApp(): void {
       if (planner.viewMode === 'month') {
         planner.currentDate = new Date(today.getFullYear(), today.getMonth(), 1);
       } else {
-        // 周视图和日视图：设置为今天
+        // 周视图：设置为今天
         planner.currentDate = new Date(today);
       }
       planner.selectedDate = new Date(today);
