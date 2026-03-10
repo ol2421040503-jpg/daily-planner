@@ -109,15 +109,17 @@ jobs:
         run: |
           TAG_NAME=${GITHUB_REF#refs/tags/}
           VERSION=${TAG_NAME#v}
+          COMMIT_SHA=$(git rev-parse HEAD)
           
           echo "🚀 正在创建 Gitee Release ${TAG_NAME}..."
           
-          # 创建 Release
+          # 创建 Release (必须指定 target_commitish)
           RELEASE_RESPONSE=$(curl -s -X POST "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases" \
             -H "Content-Type: application/json" \
             -d "{
               \"access_token\": \"${{ secrets.GITEE_TOKEN }}\",
               \"tag_name\": \"${TAG_NAME}\",
+              \"target_commitish\": \"${COMMIT_SHA}\",
               \"name\": \"每日规划 v${VERSION}\",
               \"body\": \"## 每日规划 v${VERSION}\\n\\n### 更新说明\\n请查看 [GitHub Releases](https://github.com/ol2421040503-jpg/daily-planner/releases) 获取详细更新内容。\\n\\n---\\n> 作者：严辉村高斯林\",
               \"prerelease\": false
