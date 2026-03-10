@@ -79,7 +79,7 @@ jobs:
   sync-to-gitee:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30  # 增加超时时间，上传大文件需要更长时间
     
     steps:
       - name: Checkout code
@@ -103,7 +103,7 @@ jobs:
       - name: List installer files
         run: |
           echo "📦 安装包文件列表："
-          ls -la ./installer/
+          ls -lah ./installer/
 
       - name: Create Gitee Release with assets
         run: |
@@ -131,21 +131,25 @@ jobs:
           RELEASE_ID=$(echo "${RELEASE_RESPONSE}" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
           echo "Release ID: ${RELEASE_ID}"
           
-          # 上传安装包
+          # 上传安装包（先上传小文件，再上传大文件）
           echo "📤 正在上传安装包到 Gitee..."
           
-          for file in ./installer/*; do
+          # 按文件大小排序，小文件先上传
+          for file in $(ls -S ./installer/*); do
             if [ -f "$file" ]; then
               filename=$(basename "$file")
-              echo "上传: ${filename}"
+              filesize=$(stat -c%s "$file")
+              echo "上传: ${filename} (${filesize} bytes)"
               
-              UPLOAD_RESPONSE=$(curl -s -X POST \
+              # 使用更长的超时时间
+              UPLOAD_RESPONSE=$(curl -s --max-time 600 -X POST \
                 "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases/${RELEASE_ID}/attach_files" \
                 -H "Content-Type: multipart/form-data" \
                 -F "access_token=${{ secrets.GITEE_TOKEN }}" \
                 -F "file=@${file}")
               
               echo "上传响应: ${UPLOAD_RESPONSE}"
+              echo "---"
             fi
           done
           
