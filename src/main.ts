@@ -298,6 +298,7 @@ class DailyPlanner {
   private searchQuery: string = '';  // 搜索关键词
   private showSearchPanel: boolean = false;  // 显示搜索面板
   private showReminderSettings: boolean = false;  // 显示提醒设置弹窗
+  private showShortcutHelp: boolean = false;  // 显示快捷键帮助弹窗
   private showMonthPicker: boolean = false;  // 显示月份选择器
   private yearRangeOffset: number = 0;  // 年份选择器偏移量
   private selectedPickerYear: number = 0;  // 月份选择器中选中的年份
@@ -3305,6 +3306,71 @@ class DailyPlanner {
     `;
   }
 
+  // 生成快捷键帮助弹窗
+  private generateShortcutHelpHTML(): string {
+    if (!this.showShortcutHelp) return '';
+    
+    const isDark = this.themeMode === 'dark';
+    const bgClass = isDark ? 'bg-gray-800' : 'bg-white';
+    const textClass = isDark ? 'text-gray-100' : 'text-gray-800';
+    const keyBg = isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-700';
+
+    return `
+      <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
+           onclick="planner.showShortcutHelp = false; planner.render();">
+        <div class="${bgClass} rounded-xl shadow-2xl p-6 w-full max-w-md"
+             onclick="event.stopPropagation()">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold ${textClass}">⌨️ 快捷键</h2>
+            <button onclick="planner.showShortcutHelp = false; planner.render();"
+                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+              <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="space-y-3">
+            <div class="text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} uppercase tracking-wide">应用内快捷键</div>
+            
+            <div class="flex items-center justify-between py-2">
+              <span class="${textClass}">搜索任务</span>
+              <kbd class="px-2 py-1 rounded ${keyBg} text-sm font-mono">/</kbd>
+            </div>
+            
+            <div class="flex items-center justify-between py-2">
+              <span class="${textClass}">添加任务</span>
+              <kbd class="px-2 py-1 rounded ${keyBg} text-sm font-mono">Ctrl + Enter</kbd>
+            </div>
+            
+            <div class="flex items-center justify-between py-2">
+              <span class="${textClass}">关闭弹窗</span>
+              <kbd class="px-2 py-1 rounded ${keyBg} text-sm font-mono">Esc</kbd>
+            </div>
+
+            <div class="border-t ${isDark ? 'border-gray-700' : 'border-gray-200'} my-3"></div>
+            <div class="text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} uppercase tracking-wide">全局快捷键</div>
+            
+            <div class="flex items-center justify-between py-2">
+              <span class="${textClass}">显示/隐藏窗口</span>
+              <kbd class="px-2 py-1 rounded ${keyBg} text-sm font-mono">Ctrl + Shift + P</kbd>
+            </div>
+            
+            <div class="flex items-center justify-between py-2">
+              <span class="${textClass}">快速添加任务</span>
+              <kbd class="px-2 py-1 rounded ${keyBg} text-sm font-mono">Ctrl + Shift + N</kbd>
+            </div>
+            
+            <div class="flex items-center justify-between py-2">
+              <span class="${textClass}">跳转到今天</span>
+              <kbd class="px-2 py-1 rounded ${keyBg} text-sm font-mono">Ctrl + Shift + T</kbd>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   // 生成复制任务弹窗HTML
   private generateCopyModalHTML(): string {
     if (!this.showCopyModal || !this.copyingTask) return '';
@@ -3781,7 +3847,7 @@ class DailyPlanner {
 
     return `
       <div class="fixed inset-0 z-40" onclick="planner.toggleMoreMenu()">
-        <div class="absolute right-4 top-20 ${bgClass} rounded-lg shadow-xl border py-2 min-w-[160px]" onclick="event.stopPropagation()">
+        <div class="absolute right-4 top-20 ${bgClass} rounded-lg shadow-xl border py-2 min-w-[200px]" onclick="event.stopPropagation()">
           <button onclick="planner.showYearlyStats = true; planner.showMoreMenu = false; planner.render();"
                   class="flex items-center gap-2 px-4 py-2 w-full ${textClass} ${hoverClass} transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3802,6 +3868,14 @@ class DailyPlanner {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
             </svg>
             提醒设置
+          </button>
+          <div class="border-t ${isDark ? 'border-gray-700' : ''} my-1"></div>
+          <button onclick="planner.showShortcutHelp = true; planner.showMoreMenu = false; planner.render();"
+                  class="flex items-center gap-2 px-4 py-2 w-full ${textClass} ${hoverClass} transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+            快捷键
           </button>
           <div class="border-t ${isDark ? 'border-gray-700' : ''} my-1"></div>
           <button onclick="planner.importFromJSON(); planner.showMoreMenu = false;"
@@ -3976,46 +4050,46 @@ class DailyPlanner {
     `;
   }
 
-  // 生成搜索面板
+  // 生成搜索面板（下拉面板，非弹窗）
   private generateSearchPanelHTML(): string {
     if (!this.showSearchPanel) return '';
     const isDark = this.themeMode === 'dark';
-    const bgClass = isDark ? 'bg-gray-800' : 'bg-white';
+    const bgClass = isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200';
     const inputBg = isDark ? 'bg-gray-700 border-gray-600 text-gray-100' : 'bg-white border-gray-300';
     const textClass = isDark ? 'text-gray-200' : 'text-gray-700';
 
     const results = this.searchQuery ? this.searchTasks(this.searchQuery) : [];
 
     return `
-      <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-start justify-center z-50 pt-20"
-           onclick="planner.showSearchPanel = false; planner.searchQuery = ''; planner.render();">
-        <div class="${bgClass} rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[70vh] overflow-y-auto"
-             onclick="event.stopPropagation()">
-          <div class="flex items-center gap-3 mb-4">
-            <input type="text"
-                   placeholder="搜索任务..."
-                   value="${this.searchQuery}"
-                   oninput="planner.performSearch(this.value)"
-                   class="flex-1 px-4 py-3 border ${inputBg} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
-                   autofocus>
-            <button onclick="planner.showSearchPanel = false; planner.searchQuery = ''; planner.render();"
-                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-              <svg class="w-6 h-6 ${isDark ? 'text-gray-300' : 'text-gray-500'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
-          </div>
-          <div id="searchResults" class="space-y-2">
-            ${results.length > 0 ? results.map(({ date, task }) => `
-              <div class="flex items-center gap-3 p-3 ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-50 hover:bg-gray-100'} rounded-lg cursor-pointer transition-colors"
-                   onclick="planner.jumpToDate('${date}')">
-                <input type="checkbox" ${task.completed ? 'checked' : ''} class="pointer-events-none" disabled>
-                <span class="flex-1 ${task.completed ? 'line-through text-gray-400' : textClass}">${task.text}</span>
-                <span class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${date}</span>
-                <span class="text-xs px-2 py-1 rounded ${getPriorityConfig(task.priority).bgColor} ${getPriorityConfig(task.priority).color}">${getPriorityConfig(task.priority).shortLabel}</span>
-              </div>
-            `).join('') : this.searchQuery ? `<p class="text-center text-gray-400 py-8">未找到匹配的任务</p>` : `<p class="text-center text-gray-400 py-8">输入关键词搜索任务</p>`}
-          </div>
+      <div class="absolute left-4 top-20 ${bgClass} rounded-xl shadow-2xl border p-4 w-[400px] max-h-[60vh] overflow-y-auto z-50"
+           onclick="event.stopPropagation()">
+        <div class="flex items-center gap-2 mb-3">
+          <svg class="w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input type="text"
+                 placeholder="搜索任务..."
+                 value="${this.searchQuery}"
+                 oninput="planner.performSearch(this.value)"
+                 class="flex-1 px-3 py-2 border ${inputBg} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                 autofocus>
+          <button onclick="planner.showSearchPanel = false; planner.searchQuery = ''; planner.render();"
+                  class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+            <svg class="w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div id="searchResults" class="space-y-1">
+          ${results.length > 0 ? results.map(({ date, task }) => `
+            <div class="flex items-center gap-2 p-2 ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-50 hover:bg-gray-100'} rounded-lg cursor-pointer transition-colors text-sm"
+                 onclick="planner.jumpToDate('${date}')">
+              <input type="checkbox" ${task.completed ? 'checked' : ''} class="pointer-events-none" disabled>
+              <span class="flex-1 truncate ${task.completed ? 'line-through text-gray-400' : textClass}">${task.text}</span>
+              <span class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">${date}</span>
+              <span class="text-xs px-1.5 py-0.5 rounded ${getPriorityConfig(task.priority).bgColor} ${getPriorityConfig(task.priority).color}">${getPriorityConfig(task.priority).shortLabel}</span>
+            </div>
+          `).join('') : this.searchQuery ? `<p class="text-center text-gray-400 py-4 text-sm">未找到匹配的任务</p>` : `<p class="text-center text-gray-400 py-4 text-sm">输入关键词搜索任务</p>`}
         </div>
       </div>
     `;
@@ -4628,6 +4702,7 @@ class DailyPlanner {
       ${this.generateTagManagerHTML()}
       ${this.generateQuickTagSelectorHTML()}
       ${this.generateUpdateModalHTML()}
+      ${this.generateShortcutHelpHTML()}
     `;
 
     // 使用 requestAnimationFrame 确保 DOM 渲染完成后再添加动画类
