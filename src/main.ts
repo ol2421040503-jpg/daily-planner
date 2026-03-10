@@ -310,6 +310,8 @@ class DailyPlanner {
   private draggedTagId: string = '';  // 正在拖动的标签ID
   private showIconPicker: boolean = false;  // 显示图标选择器
   private selectedIcon: string = '🏷️';  // 选中的图标
+  private showTaskPanel: boolean = false;  // 显示任务面板
+  private preselectedTime: string = '';  // 预选时间（用于周视图点击时间格子）
   
   // 提醒配置
   private reminderConfig = {
@@ -679,17 +681,22 @@ class DailyPlanner {
 
   // 处理添加任务
   private handleAddTask(): void {
-    const input = document.getElementById('taskInput') as HTMLInputElement;
+    const input = document.getElementById('taskInput') as HTMLTextAreaElement;
     const prioritySelect = document.getElementById('prioritySelect') as HTMLSelectElement;
-    const text = input.value;
-    const priority = prioritySelect.value as TaskPriority;
+    const timeSelect = document.getElementById('taskTimeInput') as HTMLSelectElement;
+    const text = input?.value?.trim();
+    const priority = prioritySelect?.value as TaskPriority || 'normal';
     const tags = Array.from(this.selectedTagsForTask);
+    const time = timeSelect?.value || '';
     
-    this.addTask(text, priority, tags);
+    if (!text) return;
+    
+    this.addTask(text, priority, tags, time);
     
     // 清空输入和选择
-    input.value = '';
+    if (input) input.value = '';
     this.selectedTagsForTask.clear();
+    this.preselectedTime = '';
   }
 
   // 更新任务标签
@@ -1627,7 +1634,7 @@ class DailyPlanner {
   }
 
   // 添加任务
-  private addTask(text: string, priority: TaskPriority = 'normal', tags: string[] = []): void {
+  private addTask(text: string, priority: TaskPriority = 'normal', tags: string[] = [], customTime?: string): void {
     // 验证：不允许添加空任务或只有空格的任务
     if (!text || text.trim() === '') {
       alert('请输入任务内容');
@@ -1646,7 +1653,7 @@ class DailyPlanner {
       text: text.trim(), // 去除首尾空格
       completed: false,
       date: dateKey,
-      time: this.getCurrentTime(),
+      time: customTime || this.getCurrentTime(),
       priority: priority,
       tags: tags
     });
@@ -2278,6 +2285,8 @@ class DailyPlanner {
 
     this.selectedDate = new Date(date);
     this.hoveredDate = null; // 清除悬停状态，避免混淆
+    this.showTaskPanel = true; // 显示右侧侧边栏
+    this.preselectedTime = ''; // 清空预选时间
     this.render(); // 重新渲染整个页面，确保面板显示正确的日期和任务
   }
 
@@ -2530,12 +2539,8 @@ class DailyPlanner {
   private closeTaskPanel(): void {
     this.selectedDate = null;
     this.hoveredDate = null;
-
-    // 隐藏任务面板
-    const taskPanel = document.querySelector('.task-panel');
-    if (taskPanel) {
-      taskPanel.classList.remove('show');
-    }
+    this.showTaskPanel = false;
+    this.render();
   }
 
   // 显示/隐藏统计弹窗
@@ -2958,7 +2963,7 @@ class DailyPlanner {
     `;
   }
 
-  // 生成任务面板HTML
+  // 生成任务面板HTML（右侧侧边栏）
   private generateTaskPanelHTML(): string {
     const displayDate = this.getDisplayDate();
     const isDark = this.themeMode === 'dark';
@@ -2969,18 +2974,7 @@ class DailyPlanner {
     const taskHover = isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-100';
     
     if (!displayDate) {
-      return `
-        <div class="task-panel fixed bottom-0 left-0 right-0 ${bgClass} shadow-2xl z-40 max-w-4xl mx-auto rounded-t-2xl">
-          <div class="p-6 flex flex-col max-h-[100vh]">
-            <div class="flex items-center justify-between mb-6">
-              <h2 class="text-xl font-bold ${textClass}">任务面板</h2>
-            </div>
-            <div class="flex-1 flex items-center justify-center text-gray-400">
-              <p>选择一个日期查看任务</p>
-            </div>
-          </div>
-        </div>
-      `;
+      return '';
     }
 
     const tasks = this.getSortedTasks(this.getSelectedDateTasks());
@@ -3018,7 +3012,6 @@ class DailyPlanner {
 
     let tasksList = '';
     tasks.forEach(task => {
-      // 确保 priority 有值，默认为 normal
       const taskPriority: TaskPriority = (task.priority || 'normal') as TaskPriority;
       const priority = getPriorityConfig(taskPriority);
       const priorityBg = isDark ? priority.darkBg : priority.bgColor;
@@ -3041,7 +3034,7 @@ class DailyPlanner {
       }
       
       tasksList += `
-        <div class="flex items-center gap-3 p-3 ${taskBg} ${taskHover} rounded-lg group transition-colors border-l-4 ${borderColor} ${task.completed ? 'task-completed' : ''}"
+        <div class="flex items-start gap-2 p-2 ${taskBg} ${taskHover} rounded-lg group transition-colors border-l-4 ${borderColor} ${task.completed ? 'task-completed' : ''}"
              draggable="true"
              ondragstart="planner.onTaskDragStart(event, '${task.id}')"
              ondblclick="planner.startEditTask('${task.id}')"
@@ -3049,32 +3042,36 @@ class DailyPlanner {
           <input type="checkbox"
                  ${task.completed ? 'checked' : ''}
                  onchange="planner.toggleTask('${task.id}')"
-                 class="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer task-checkbox mt-0.5">
+                 class="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer task-checkbox mt-1 flex-shrink-0">
           <div class="flex-1 min-w-0">
-            <span class="task-text block ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} cursor-pointer" title="双击编辑">${task.text}</span>
+            <span class="task-text block text-sm ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} cursor-pointer whitespace-pre-wrap" title="双击编辑">${task.text}</span>
             ${taskTagsHTML}
           </div>
-          <select onchange="planner.updateTaskPriority('${task.id}', this.value)"
-                  class="text-xs px-2 py-1 rounded ${priorityBg} ${priorityColor} border-0 cursor-pointer whitespace-nowrap">
-            <option value="urgent-important" ${taskPriority === 'urgent-important' ? 'selected' : ''}>🔴紧急重要</option>
-            <option value="important" ${taskPriority === 'important' ? 'selected' : ''}>🟡重要不急</option>
-            <option value="urgent" ${taskPriority === 'urgent' ? 'selected' : ''}>🟠紧急不重要</option>
-            <option value="normal" ${taskPriority === 'normal' ? 'selected' : ''}>⚪不重要不急</option>
-          </select>
-          <span class="text-xs text-gray-400">${task.time}</span>
-          <button onclick="planner.openCopyModal('${task.id}')"
-                  class="opacity-0 group-hover:opacity-100 p-1 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900 rounded transition-all"
-                  title="复制到其他日期">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-            </svg>
-          </button>
-          <button onclick="planner.deleteTask('${task.id}')"
-                  class="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:bg-red-100 dark:hover:bg-red-900 rounded transition-all">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
+          <div class="flex flex-col items-end gap-1 flex-shrink-0">
+            <span class="text-[10px] text-gray-400">${task.time}</span>
+            <select onchange="planner.updateTaskPriority('${task.id}', this.value)"
+                    class="text-[10px] px-1 py-0.5 rounded ${priorityBg} ${priorityColor} border-0 cursor-pointer">
+              <option value="urgent-important" ${taskPriority === 'urgent-important' ? 'selected' : ''}>🔴</option>
+              <option value="important" ${taskPriority === 'important' ? 'selected' : ''}>🟡</option>
+              <option value="urgent" ${taskPriority === 'urgent' ? 'selected' : ''}>🟠</option>
+              <option value="normal" ${taskPriority === 'normal' ? 'selected' : ''}>⚪</option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button onclick="planner.openCopyModal('${task.id}')"
+                    class="p-1 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900 rounded"
+                    title="复制到其他日期">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+              </svg>
+            </button>
+            <button onclick="planner.deleteTask('${task.id}')"
+                    class="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-red-900 rounded">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
         </div>
       `;
     });
@@ -3085,78 +3082,99 @@ class DailyPlanner {
     let anniversaryHtml = '';
     if (todayAnniversaries.length > 0) {
       anniversaryHtml = `
-        <div class="mb-3 p-2 bg-pink-100 dark:bg-pink-900/30 rounded-lg">
+        <div class="mb-2 p-2 bg-pink-100 dark:bg-pink-900/30 rounded-lg">
           ${todayAnniversaries.map(a => `
-            <span class="text-pink-600 dark:text-pink-400 text-sm">🎉 ${a.name} (${a.type === 'birthday' ? '生日' : a.type === 'anniversary' ? '纪念日' : '自定义'})</span>
+            <span class="text-pink-600 dark:text-pink-400 text-xs">🎉 ${a.name}</span>
           `).join('')}
         </div>
       `;
     }
 
     return `
-      <div class="task-panel fixed bottom-0 left-0 right-0 ${bgClass} shadow-2xl z-40 max-w-4xl mx-auto rounded-t-2xl">
-        <div class="p-6 flex flex-col max-h-[100vh]">
-          <div class="flex items-center justify-between mb-4">
-            <div>
-              <div class="flex items-center gap-2">
-                <h2 class="text-xl font-bold ${textClass}">${dateStr} 的任务</h2>
-                ${sortSelect}
-                ${tagFilterSelect}
-              </div>
-              <div class="flex items-center gap-2 mt-1">
-                <span class="text-xs text-gray-400 dark:text-gray-500">农历 ${lunarText}</span>
-                ${holidayInfo ? (holidayInfo.holiday ? 
-                  `<span class="text-xs px-1.5 py-0.5 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded">${holidayInfo.name}</span>` : 
-                  `<span class="text-xs px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 rounded">调休上班</span>`) : ''}
-              </div>
-            </div>
-            ${this.selectedDate ? `
+      <!-- 右侧侧边栏任务面板 -->
+      <div class="task-panel fixed top-0 right-0 h-full w-80 ${bgClass} shadow-2xl z-40 transform transition-transform duration-300 ${this.showTaskPanel ? 'translate-x-0' : 'translate-x-full'}">
+        <div class="h-full flex flex-col ${window.electronAPI ? 'pt-10' : 'pt-4'}">
+          <!-- 头部 -->
+          <div class="px-4 pb-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}">
+            <div class="flex items-center justify-between mb-2">
+              <h2 class="text-lg font-bold ${textClass}">${dateStr}</h2>
               <button onclick="planner.closeTaskPanel()"
-                      class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <svg class="w-4 h-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
               </button>
-            ` : ''}
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+              <span class="${isDark ? 'text-gray-400' : 'text-gray-500'}">农历 ${lunarText}</span>
+              ${holidayInfo ? (holidayInfo.holiday ? 
+                `<span class="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded">${holidayInfo.name}</span>` : 
+                `<span class="px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 rounded">调休</span>`) : ''}
+              <div class="flex-1"></div>
+              ${sortSelect}
+              ${tagFilterSelect}
+            </div>
           </div>
+          
           ${anniversaryHtml}
-          <div class="mb-4">
-            <div class="flex gap-2 mb-2">
-              <input type="text"
-                     id="taskInput"
-                     placeholder="添加新任务..."
-                     class="flex-1 px-4 py-2 border ${inputBg} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDark ? 'text-gray-100 placeholder-gray-400' : ''}"
-                     onkeypress="if(event.key === 'Enter') planner.handleAddTask()">
-              <select id="prioritySelect" class="px-3 py-2 border ${inputBg} rounded-lg ${isDark ? 'text-gray-100' : ''}">
-                <option value="urgent-important">🔴紧急重要</option>
-                <option value="important">🟡重要不急</option>
-                <option value="urgent">🟠紧急不重要</option>
-                <option value="normal" selected>⚪不重要不急</option>
+          
+          <!-- 添加任务区域 -->
+          <div class="px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}">
+            <textarea id="taskInput"
+                      placeholder="添加新任务...&#10;支持多行输入&#10;按 Ctrl+Enter 添加"
+                      rows="3"
+                      class="w-full px-3 py-2 border ${inputBg} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDark ? 'text-gray-100 placeholder-gray-400' : 'text-gray-800 placeholder-gray-400'} text-sm resize-none"
+                      onkeydown="if(event.key === 'Enter' && event.ctrlKey) planner.handleAddTask()"></textarea>
+            <div class="flex items-center gap-2 mt-2">
+              <select id="taskTimeInput" class="flex-1 px-2 py-1.5 text-xs border ${inputBg} rounded-lg ${isDark ? 'text-gray-100' : ''}">
+                <option value="">不设置时间</option>
+                ${Array.from({length: 24}, (_, h) => 
+                  Array.from({length: 4}, (_, m) => {
+                    const hour = h.toString().padStart(2, '0');
+                    const min = (m * 15).toString().padStart(2, '0');
+                    const selected = this.preselectedTime === `${hour}:${min}`;
+                    return `<option value="${hour}:${min}" ${selected ? 'selected' : ''}>${hour}:${min}</option>`;
+                  }).join('')
+                ).join('')}
+              </select>
+              <select id="prioritySelect" class="flex-1 px-2 py-1.5 text-xs border ${inputBg} rounded-lg ${isDark ? 'text-gray-100' : ''}">
+                <option value="urgent-important">🔴 紧急重要</option>
+                <option value="important">🟡 重要不急</option>
+                <option value="urgent">🟠 紧急不重要</option>
+                <option value="normal" selected>⚪ 普通</option>
               </select>
               <button onclick="planner.handleAddTask()"
-                      class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                      class="px-4 py-1.5 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors">
                 添加
               </button>
             </div>
             <!-- 标签选择器 -->
-            <div class="flex flex-wrap gap-1 items-center">
-              <span class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mr-1">标签：</span>
-              ${this.getAllTags().map(tag => `
+            <div class="flex flex-wrap gap-1 mt-2 items-center">
+              <span class="text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}">标签：</span>
+              ${this.getAllTags().slice(0, 6).map(tag => `
                 <button type="button"
-                        data-tag-id="${tag.id}"
                         onclick="planner.toggleTagSelection('${tag.id}')"
-                        class="tag-select-btn text-xs px-2 py-1 rounded-full transition-all ${tag.color} ${tag.textColor} hover:opacity-80 ${this.selectedTagsForTask.has(tag.id) ? 'ring-2 ring-blue-500 ring-offset-1' : ''}">
-                  ${tag.icon} ${tag.name}${this.selectedTagsForTask.has(tag.id) ? ' ✓' : ''}
+                        class="text-[10px] px-1.5 py-0.5 rounded-full transition-all ${tag.color} ${tag.textColor} hover:opacity-80 ${this.selectedTagsForTask.has(tag.id) ? 'ring-2 ring-blue-500 ring-offset-1' : ''}">
+                  ${tag.icon}${this.selectedTagsForTask.has(tag.id) ? ' ✓' : ''}
                 </button>
               `).join('')}
-              <button onclick="planner.toggleTagManager()"
-                      class="text-xs px-2 py-1 rounded-full ${isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}">
-                ⚙️ 管理
-              </button>
+              ${this.getAllTags().length > 6 ? `
+                <button onclick="planner.toggleTagManager()"
+                        class="text-[10px] px-1.5 py-0.5 rounded-full ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'}">
+                  +${this.getAllTags().length - 6}
+                </button>
+              ` : ''}
             </div>
           </div>
-          <div class="flex-1 space-y-2 overflow-y-auto min-h-[300px]">
-            ${tasks.length > 0 ? tasksList : '<p class="text-gray-400 text-center py-8">暂无任务</p>'}
+          
+          <!-- 任务列表 -->
+          <div class="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+            ${tasks.length > 0 ? tasksList : `<p class="text-gray-400 text-center py-8 text-sm">暂无任务</p>`}
+          </div>
+          
+          <!-- 底部统计 -->
+          <div class="px-4 py-2 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'} text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">
+            共 ${tasks.length} 个任务，已完成 ${tasks.filter(t => t.completed).length} 个
           </div>
         </div>
       </div>
