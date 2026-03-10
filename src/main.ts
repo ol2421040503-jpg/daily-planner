@@ -2777,7 +2777,7 @@ class DailyPlanner {
     `;
   }
 
-  // 生成日历HTML
+  // 生成日历HTML（任务可视化）
   private generateCalendarHTML(): string {
     const year = this.currentDate.getFullYear();
     const month = this.currentDate.getMonth();
@@ -2789,8 +2789,6 @@ class DailyPlanner {
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     // 调整：周一为每周第一天，周日为最后一天
-    // getDay() 返回 0(周日), 1(周一), ..., 6(周六)
-    // 转换为：周一=0, 周二=1, ..., 周日=6
     const startingDay = (firstDay.getDay() + 6) % 7;
     const totalDays = lastDay.getDate();
 
@@ -2813,92 +2811,117 @@ class DailyPlanner {
              year === today.getFullYear();
     };
 
-    const hasTasks = (day: number) => {
+    // 获取日期的任务列表
+    const getDayTasks = (day: number): Task[] => {
       const dateKey = this.formatDate(new Date(year, month, day));
-      return this.tasks[dateKey] && this.tasks[dateKey].length > 0;
+      return this.tasks[dateKey] || [];
     };
 
     let calendarDays = '';
 
     for (let i = 0; i < startingDay; i++) {
-      calendarDays += '<div class="h-14"></div>';
+      calendarDays += `<div class="min-h-[100px] ${isDark ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-lg"></div>`;
     }
 
     for (let day = 1; day <= totalDays; day++) {
       const date = new Date(year, month, day);
-      const selected = isSelectedDate(day) ? 'bg-blue-500 text-white hover:bg-blue-600' : hoverClass;
-      const today = isToday(day) ? 'ring-2 ring-blue-500 ring-offset-2' : '';
-      const indicatorColor = this.getTaskIndicatorColor(day);
       const dateKey = this.formatDate(date);
+      const today = isToday(day);
+      const selected = isSelectedDate(day);
+      const dayTasks = getDayTasks(day);
       const holidayInfo = this.getHolidayInfo(date);
       
       // 获取农历信息
       const lunarText = this.getLunarDisplayText(date);
       const isJieQi = this.isJieQiDay(date);
       
-      // 节假日样式和标签
-      let holidayClass = '';
-      let holidayTag = '';
-      
-      if (holidayInfo) {
-        if (holidayInfo.holiday) {
-          // 法定假日或普通假日
-          holidayClass = holidayInfo.wage === 3 ? 'font-bold' : '';
-          holidayTag = `<span class="absolute -top-1 -right-1 text-[9px] bg-red-500 text-white px-1 rounded shadow-sm">${holidayInfo.name}</span>`;
-        } else {
-          // 调休工作日（周末需要上班）
-          holidayClass = '';
-          holidayTag = `<span class="absolute -top-1 -right-1 text-[9px] bg-orange-500 text-white px-1 rounded shadow-sm">班</span>`;
-        }
-      }
-      
-      // 农历样式：节气用绿色，节日用红色，普通农历日用灰色
+      // 日期数字样式
+      let dayNumClass = isDark ? 'text-gray-200' : 'text-gray-800';
       let lunarClass = isDark ? 'text-gray-500' : 'text-gray-400';
-      let dayColorClass = isDark ? 'text-gray-200' : '';
       
-      if (isJieQi) {
-        lunarClass = 'text-green-400 font-medium';
+      if (today) {
+        dayNumClass = 'bg-blue-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold';
+        lunarClass = 'text-blue-400';
       } else if (holidayInfo && holidayInfo.holiday) {
-        dayColorClass = 'text-red-400';
+        dayNumClass = 'text-red-500 font-medium';
         lunarClass = 'text-red-400';
       } else if (holidayInfo && !holidayInfo.holiday) {
-        dayColorClass = 'text-orange-400';
+        dayNumClass = 'text-orange-500';
+        lunarClass = 'text-orange-400';
       } else {
         // 默认周末显示红色
         const dayOfWeek = date.getDay();
         if (dayOfWeek === 0 || dayOfWeek === 6) {
-          dayColorClass = 'text-red-400';
+          dayNumClass = 'text-red-400';
           lunarClass = 'text-red-300';
         }
       }
       
-      // 选中状态覆盖颜色
-      if (isSelectedDate(day)) {
-        dayColorClass = '';
-        lunarClass = 'text-blue-100';
+      // 节假日标签
+      let holidayTag = '';
+      if (holidayInfo) {
+        if (holidayInfo.holiday) {
+          holidayTag = `<span class="absolute top-1 right-1 text-[9px] bg-red-500 text-white px-1 rounded">${holidayInfo.name}</span>`;
+        } else {
+          holidayTag = `<span class="absolute top-1 right-1 text-[9px] bg-orange-500 text-white px-1 rounded">班</span>`;
+        }
       }
       
-      const tasksIndicator = indicatorColor !== 'hidden'
-        ? `<div class="task-indicator absolute bottom-0.5 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 ${indicatorColor} rounded-full"></div>`
-        : '';
+      // 生成任务列表（最多显示3个，多的显示 +X more）
+      let tasksHTML = '';
+      const maxVisible = 3;
+      const visibleTasks = dayTasks.slice(0, maxVisible);
+      const hiddenCount = dayTasks.length - maxVisible;
+      
+      visibleTasks.forEach(task => {
+        const taskPriority = (task.priority || 'normal') as TaskPriority;
+        const priorityConfig = PRIORITY_CONFIG[taskPriority] || PRIORITY_CONFIG['normal'];
+        const dotColor = taskPriority === 'urgent-important' ? 'bg-red-500' :
+                        taskPriority === 'important' ? 'bg-yellow-500' :
+                        taskPriority === 'urgent' ? 'bg-orange-500' : 'bg-gray-400';
+        
+        tasksHTML += `
+          <div class="text-[11px] truncate ${task.completed ? 'line-through opacity-50' : ''} ${isDark ? 'text-gray-300' : 'text-gray-700'} flex items-center gap-1 px-1 py-0.5 rounded ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} cursor-pointer"
+               onclick="event.stopPropagation(); planner.selectDate(new Date(${year}, ${month}, ${day}))">
+            <span class="w-1.5 h-1.5 ${dotColor} rounded-full flex-shrink-0"></span>
+            <span class="truncate">${task.text}</span>
+          </div>
+        `;
+      });
+      
+      if (hiddenCount > 0) {
+        tasksHTML += `
+          <div class="text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'} px-1">
+            +${hiddenCount} more
+          </div>
+        `;
+      }
 
       calendarDays += `
-        <div class="calendar-day h-14 flex flex-col items-center justify-center cursor-pointer rounded-lg relative transition-colors ${selected} ${today} ${holidayClass}"
+        <div class="min-h-[100px] ${bgClass} rounded-lg shadow cursor-pointer transition-all hover:shadow-md ${today ? 'ring-2 ring-blue-500' : ''} ${selected ? 'ring-2 ring-blue-400' : ''} relative overflow-hidden"
              data-date="${dateKey}"
              onmouseenter="planner.hoverDate(new Date(${year}, ${month}, ${day}))"
              onmouseleave="planner.leaveDate()"
              onclick="planner.selectDate(new Date(${year}, ${month}, ${day}))">
-          <span class="text-sm ${dayColorClass}">${day}</span>
-          <span class="text-[10px] ${lunarClass}">${lunarText}</span>
-          ${holidayTag}
-          ${tasksIndicator}
+          <!-- 日期头部 -->
+          <div class="flex items-start justify-between p-1">
+            <div class="flex flex-col">
+              <span class="${today ? dayNumClass : 'text-sm font-medium ' + dayNumClass}">${day}</span>
+              <span class="text-[9px] ${lunarClass} ${isJieQi ? 'text-green-400 font-medium' : ''}">${lunarText}</span>
+            </div>
+            ${!today ? holidayTag : ''}
+          </div>
+          <!-- 任务列表 -->
+          <div class="px-1 pb-1 space-y-0.5">
+            ${tasksHTML}
+          </div>
         </div>
       `;
     }
 
     return `
-      <div class="${bgClass} rounded-xl shadow-lg p-6 w-full">
-        <div class="flex items-center justify-between mb-6">
+      <div class="${bgClass} rounded-xl shadow-lg p-4 w-full">
+        <div class="flex items-center justify-between mb-4">
           <button onclick="planner.changeMonth(-1)"
                   class="p-2 ${hoverClass} rounded-lg transition-colors">
             <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : 'text-gray-700'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
