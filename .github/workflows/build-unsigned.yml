@@ -63,7 +63,7 @@ jobs:
             ## 每日规划 v${{ steps.version.outputs.VERSION }}
             
             ### 下载
-            - Windows 用户下载 `Setup.${{ steps.version.outputs.VERSION }}.exe`
+            - Windows 用户下载安装包（.exe 文件）
             - 国内用户可从 [Gitee Releases](https://gitee.com/europe-and-oceania/daily-planner/releases) 下载，速度更快
             
             ### 更新说明
@@ -79,7 +79,7 @@ jobs:
   sync-to-gitee:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # 增加超时时间，上传大文件需要更长时间
+    timeout-minutes: 45  # 增加超时时间
     
     steps:
       - name: Checkout code
@@ -105,7 +105,8 @@ jobs:
           echo "📦 安装包文件列表："
           ls -lah ./installer/
 
-      - name: Create Gitee Release with assets
+      - name: Create Gitee Release
+        id: create_release
         run: |
           TAG_NAME=${GITHUB_REF#refs/tags/}
           VERSION=${TAG_NAME#v}
@@ -113,7 +114,7 @@ jobs:
           
           echo "🚀 正在创建 Gitee Release ${TAG_NAME}..."
           
-          # 创建 Release (必须指定 target_commitish)
+          # 创建 Release
           RELEASE_RESPONSE=$(curl -s -X POST "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases" \
             -H "Content-Type: application/json" \
             -d "{
@@ -121,36 +122,92 @@ jobs:
               \"tag_name\": \"${TAG_NAME}\",
               \"target_commitish\": \"${COMMIT_SHA}\",
               \"name\": \"每日规划 v${VERSION}\",
-              \"body\": \"## 每日规划 v${VERSION}\\n\\n### 更新说明\\n请查看 [GitHub Releases](https://github.com/ol2421040503-jpg/daily-planner/releases) 获取详细更新内容。\\n\\n---\\n> 作者：严辉村高斯林\",
+              \"body\": \"## 每日规划 v${VERSION}\\n\\n### 国内快速下载\\n请下载下方的 .exe 安装包\\n\\n### 更新说明\\n请查看 [GitHub Releases](https://github.com/ol2421040503-jpg/daily-planner/releases) 获取详细更新内容。\\n\\n---\\n> 作者：严辉村高斯林\",
               \"prerelease\": false
             }")
           
-          echo "Release 创建响应: ${RELEASE_RESPONSE}"
+          echo "Release 响应: ${RELEASE_RESPONSE}"
           
           # 提取 release id
           RELEASE_ID=$(echo "${RELEASE_RESPONSE}" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
           echo "Release ID: ${RELEASE_ID}"
+          echo "release_id=${RELEASE_ID}" >> $GITHUB_OUTPUT
+
+      - name: Upload small files to Gitee
+        env:
+          RELEASE_ID: ${{ steps.create_release.outputs.release_id }}
+        run: |
+          echo "📤 上传小文件到 Gitee..."
           
-          # 上传安装包（先上传小文件，再上传大文件）
-          echo "📤 正在上传安装包到 Gitee..."
-          
-          # 按文件大小排序，小文件先上传
-          for file in $(ls -S ./installer/*); do
+          # 上传 .yml 和 .blockmap 文件
+          for file in ./installer/*.yml ./installer/*.blockmap; do
             if [ -f "$file" ]; then
               filename=$(basename "$file")
-              filesize=$(stat -c%s "$file")
-              echo "上传: ${filename} (${filesize} bytes)"
+              echo "上传: ${filename}"
               
-              # 使用更长的超时时间
-              UPLOAD_RESPONSE=$(curl -s --max-time 600 -X POST \
+              response=$(curl -s -X POST \
                 "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases/${RELEASE_ID}/attach_files" \
-                -H "Content-Type: multipart/form-data" \
                 -F "access_token=${{ secrets.GITEE_TOKEN }}" \
                 -F "file=@${file}")
               
-              echo "上传响应: ${UPLOAD_RESPONSE}"
-              echo "---"
+              echo "响应: ${response}"
             fi
           done
+
+      - name: Upload installer to Gitee (with retry)
+        env:
+          RELEASE_ID: ${{ steps.create_release.outputs.release_id }}
+        run: |
+          echo "📤 上传安装包到 Gitee（带重试）..."
+          
+          # 找到 .exe 文件
+          EXE_FILE=$(find ./installer -name "*.exe" | head -1)
+          
+          if [ -z "$EXE_FILE" ]; then
+            echo "❌ 未找到安装包文件"
+            exit 1
+          fi
+          
+          filename=$(basename "$EXE_FILE")
+          filesize=$(stat -c%s "$EXE_FILE")
+          echo "安装包: ${filename} ($(numfmt --to=iec $filesize))"
+          
+          # 重试上传，最多 3 次
+          max_retries=3
+          retry=0
+          success=false
+          
+          while [ $retry -lt $max_retries ] && [ "$success" = false ]; do
+            retry=$((retry + 1))
+            echo "第 ${retry} 次尝试上传..."
+            
+            # 使用更长的超时时间，显示进度
+            response=$(curl --progress-bar --max-time 1800 -X POST \
+              "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases/${RELEASE_ID}/attach_files" \
+              -F "access_token=${{ secrets.GITEE_TOKEN }}" \
+              -F "file=@${EXE_FILE}" \
+              -o response.txt -w "%{http_code}" 2>&1)
+            
+            http_code=$(tail -1 response.txt 2>/dev/null || echo "$response")
+            response_body=$(head -n -1 response.txt 2>/dev/null || cat response.txt)
+            
+            echo "HTTP 状态码: ${http_code}"
+            echo "响应: ${response_body}"
+            
+            # 检查是否成功（HTTP 200 或响应包含 id）
+            if echo "$response_body" | grep -q '"id"'; then
+              echo "✅ 上传成功！"
+              success=true
+            else
+              echo "⚠️ 上传失败，等待 30 秒后重试..."
+              sleep 30
+            fi
+          done
+          
+          if [ "$success" = false ]; then
+            echo "❌ 上传失败，已尝试 ${max_retries} 次"
+            echo "请手动从 GitHub 下载并上传到 Gitee"
+            exit 0  # 不阻止整个工作流
+          fi
           
           echo "✅ Gitee Release 发布完成！"
