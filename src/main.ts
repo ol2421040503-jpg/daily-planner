@@ -310,6 +310,8 @@ class DailyPlanner {
   private draggedTagId: string = '';  // 正在拖动的标签ID
   private showIconPicker: boolean = false;  // 显示图标选择器
   private selectedIcon: string = '🏷️';  // 选中的图标
+  private showTaskPanel: boolean = false;  // 显示任务面板
+  private preselectedTime: string = '';  // 预选时间（用于周视图点击时间格子）
   
   // 提醒配置
   private reminderConfig = {
@@ -4174,61 +4176,105 @@ class DailyPlanner {
     `;
   }
 
-  // 生成周视图
+  // 生成周视图（时间轴式）
   private generateWeekViewHTML(): string {
     const isDark = this.themeMode === 'dark';
     const bgClass = isDark ? 'bg-gray-800' : 'bg-white';
     const textClass = isDark ? 'text-gray-100' : 'text-gray-800';
+    const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+    const hoverBg = isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100';
 
     // 获取本周的日期（周一开始）
     const weekStart = new Date(this.currentDate);
     const dayOfWeek = weekStart.getDay();
-    // getDay(): 0=周日, 1=周一, ..., 6=周六
-    // 转换为：周一=0, 周二=1, ..., 周日=6
     const adjustedDayOfWeek = (dayOfWeek + 6) % 7;
     weekStart.setDate(weekStart.getDate() - adjustedDayOfWeek);
 
     const weekDays = ['一', '二', '三', '四', '五', '六', '日'];
     const today = new Date();
+    const todayStr = this.formatDate(today);
 
-    let weekDaysHTML = '';
+    // 时间范围：6:00 - 22:00
+    const startHour = 6;
+    const endHour = 22;
+    const hourHeight = 60; // 每小时高度 60px
+
+    // 生成时间轴
+    let timeAxisHTML = '<div class="w-14 flex-shrink-0"></div>'; // 左上角空白
+    for (let hour = startHour; hour <= endHour; hour++) {
+      const displayHour = hour.toString().padStart(2, '0');
+      timeAxisHTML += `
+        <div class="h-[${hourHeight}px] flex items-start justify-end pr-2 text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}">
+          ${displayHour}:00
+        </div>
+      `;
+    }
+
+    // 生成每天的列
+    let daysColumnsHTML = '';
     for (let i = 0; i < 7; i++) {
       const date = new Date(weekStart);
       date.setDate(date.getDate() + i);
       const dateKey = this.formatDate(date);
-      const isToday = date.toDateString() === today.toDateString();
+      const isToday = dateKey === todayStr;
       const dayTasks = this.tasks[dateKey] || [];
       const lunarText = this.getLunarDisplayText(date);
-      // 使用年月日数值创建日期，避免时区问题
       const year = date.getFullYear();
       const month = date.getMonth();
       const day = date.getDate();
 
-      weekDaysHTML += `
-        <div class="flex-1 ${bgClass} rounded-lg shadow-lg p-3 ${isToday ? 'ring-2 ring-blue-500' : ''} min-w-[120px] cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all"
-             onclick="planner.selectDate(new Date(${year}, ${month}, ${day}))"
-             ondragover="event.preventDefault()"
-             ondrop="planner.onDateDrop(event, new Date(${year}, ${month}, ${day}))">
-          <div class="text-center mb-2 pb-2 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}">
-            <div class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">周${weekDays[i]}</div>
-            <div class="text-xl font-bold ${textClass}">${date.getDate()}</div>
-            <div class="text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}">${lunarText}</div>
+      // 头部
+      const headerHTML = `
+        <div class="h-16 flex flex-col items-center justify-center border-b ${borderColor} ${isToday ? 'bg-blue-50 dark:bg-blue-900/20' : ''}">
+          <div class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">周${weekDays[i]}</div>
+          <div class="text-xl font-bold ${isToday ? 'text-blue-500' : textClass}">${date.getDate()}</div>
+          <div class="text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}">${lunarText}</div>
+        </div>
+      `;
+
+      // 生成时间格子和任务块
+      let timeSlotsHTML = '';
+      for (let hour = startHour; hour < endHour; hour++) {
+        timeSlotsHTML += `
+          <div class="h-[${hourHeight}px] border-b ${borderColor} relative cursor-pointer ${hoverBg}"
+               onclick="planner.selectDateWithTime(new Date(${year}, ${month}, ${day}, ${hour}))">
           </div>
-          <div class="space-y-1 max-h-48 overflow-y-auto" onclick="planner.selectDate(new Date(${year}, ${month}, ${day}))">
-            ${dayTasks.length > 0 ? dayTasks.map(task => {
-              const taskPriority = (task.priority || 'normal') as TaskPriority;
-              const priorityConfig = PRIORITY_CONFIG[taskPriority] || PRIORITY_CONFIG['normal'];
-              return `
-              <div class="p-2 rounded ${task.completed ? 'bg-gray-100 dark:bg-gray-700' : isDark ? 'bg-gray-700' : 'bg-gray-50'} border-l-2 ${priorityConfig.borderColor}"
-                   onclick="planner.selectDate(new Date(${year}, ${month}, ${day}))">
-                <div class="flex items-center gap-1">
-                  <input type="checkbox" ${task.completed ? 'checked' : ''} 
-                         onclick="event.stopPropagation(); planner.selectedDate = new Date(${year}, ${month}, ${day}); planner.toggleTask('${task.id}');"
-                         class="w-3 h-3 rounded cursor-pointer">
-                  <span class="text-xs ${task.completed ? 'line-through text-gray-400' : textClass} truncate">${task.text}</span>
-                </div>
+        `;
+      }
+
+      // 生成任务块
+      let taskBlocksHTML = '';
+      dayTasks.forEach(task => {
+        if (task.time) {
+          const timeParts = task.time.split(':');
+          const taskHour = parseInt(timeParts[0]);
+          const taskMinute = parseInt(timeParts[1] || '0');
+          
+          // 只显示在时间范围内的任务
+          if (taskHour >= startHour && taskHour < endHour) {
+            const topOffset = (taskHour - startHour) * hourHeight + (taskMinute / 60) * hourHeight;
+            const taskHeight = 50; // 任务块默认高度
+            const taskPriority = (task.priority || 'normal') as TaskPriority;
+            const priorityConfig = PRIORITY_CONFIG[taskPriority] || PRIORITY_CONFIG['normal'];
+            
+            taskBlocksHTML += `
+              <div class="absolute left-1 right-1 p-1 rounded text-xs ${priorityConfig.bgColor} ${priorityConfig.color} border-l-2 ${priorityConfig.borderColor} ${task.completed ? 'opacity-50 line-through' : ''} cursor-pointer overflow-hidden"
+                   style="top: ${topOffset + 64}px; height: ${taskHeight}px;"
+                   onclick="event.stopPropagation(); planner.selectDate(new Date(${year}, ${month}, ${day}));">
+                <div class="font-medium truncate">${task.text}</div>
+                <div class="text-[10px] opacity-70">${task.time}</div>
               </div>
-            `}).join('') : `<p class="text-xs text-gray-400 text-center py-1">无任务</p>`}
+            `;
+          }
+        }
+      });
+
+      daysColumnsHTML += `
+        <div class="flex-1 min-w-[100px] ${bgClass} rounded-lg shadow overflow-hidden relative ${isToday ? 'ring-2 ring-blue-500' : ''}">
+          ${headerHTML}
+          <div class="relative">
+            ${timeSlotsHTML}
+            ${taskBlocksHTML}
           </div>
         </div>
       `;
@@ -4241,26 +4287,54 @@ class DailyPlanner {
       <div class="${bgClass} rounded-xl shadow-lg p-4">
         <div class="flex items-center justify-between mb-4">
           <button onclick="planner.currentDate.setDate(planner.currentDate.getDate() - 7); planner.render();"
-                  class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-            <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  class="p-2 ${hoverBg} rounded-lg transition-colors">
+            <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
             </svg>
           </button>
           <h2 class="text-lg font-bold ${textClass}">
-            ${weekStart.getMonth() + 1}月${weekStart.getDate()}日 - ${weekEnd.getMonth() + 1}月${weekEnd.getDate()}日
+            ${weekStart.getFullYear()}年${weekStart.getMonth() + 1}月${weekStart.getDate()}日 - ${weekEnd.getMonth() + 1}月${weekEnd.getDate()}日
           </h2>
           <button onclick="planner.currentDate.setDate(planner.currentDate.getDate() + 7); planner.render();"
-                  class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-            <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  class="p-2 ${hoverBg} rounded-lg transition-colors">
+            <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
             </svg>
           </button>
         </div>
-        <div class="flex gap-2 overflow-x-auto">
-          ${weekDaysHTML}
+        <div class="flex gap-1 overflow-x-auto">
+          <!-- 时间轴 -->
+          <div class="w-14 flex-shrink-0 ${bgClass} rounded-lg">
+            <div class="h-16 border-b ${borderColor}"></div>
+            <div class="relative">
+              ${Array.from({length: endHour - startHour}, (_, i) => {
+                const hour = startHour + i;
+                const displayHour = hour.toString().padStart(2, '0');
+                return `<div class="h-[${hourHeight}px] flex items-start justify-end pr-2 pt-0 text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}">${displayHour}:00</div>`;
+              }).join('')}
+            </div>
+          </div>
+          <!-- 日期列 -->
+          ${daysColumnsHTML}
         </div>
       </div>
     `;
+  }
+
+  // 选择日期并设置时间
+  private selectDateWithTime(date: Date): void {
+    this.selectedDate = date;
+    this.hoveredDate = date;
+    this.showTaskPanel = true;
+    this.preselectedTime = this.formatTimeHM(date);
+    this.render();
+  }
+
+  // 格式化时间为 HH:MM
+  private formatTimeHM(date: Date): string {
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
   }
 
   // 生成日视图
