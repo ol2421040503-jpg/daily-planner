@@ -61,7 +61,7 @@ declare global {
 }
 
 // ==================== 版本配置 ====================
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.2.5';
 const VERSION_CHECK_URL = 'https://your-server.com/api/version'; // 替换为你的版本检查API
 const RELEASE_NOTES: Record<string, string[]> = {
   '1.0.0': [
@@ -4649,7 +4649,7 @@ class DailyPlanner {
     const windowControls = window.electronAPI ? `
       <div class="fixed top-0 left-0 right-0 h-8 ${isDark ? 'bg-gray-900/80' : 'bg-white/80'} backdrop-blur-sm flex items-center justify-between px-2 z-[100] select-none" style="-webkit-app-region: drag;">
         <div class="flex items-center gap-2" style="-webkit-app-region: no-drag;">
-          <img src="/icon.png" class="w-4 h-4" alt="每日规划">
+          <img src="./icon.png" class="w-4 h-4" alt="每日规划">
           <span class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}">每日规划 v${APP_VERSION}</span>
         </div>
         <div class="flex items-center gap-1" style="-webkit-app-region: no-drag;">
