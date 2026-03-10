@@ -664,19 +664,8 @@ class DailyPlanner {
     } else {
       this.selectedTagsForTask.add(tagId);
     }
-    // 只更新标签按钮样式，不重新渲染整个页面
-    document.querySelectorAll('.tag-select-btn').forEach(btn => {
-      const id = btn.getAttribute('data-tag-id');
-      if (id === tagId) {
-        if (this.selectedTagsForTask.has(tagId)) {
-          btn.classList.add('ring-2', 'ring-blue-500', 'ring-offset-1');
-          btn.innerHTML = btn.innerHTML.replace(/✓/g, '') + ' ✓';
-        } else {
-          btn.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-1');
-          btn.innerHTML = btn.innerHTML.replace(/\s*✓/g, '');
-        }
-      }
-    });
+    // 重新渲染以更新标签选中状态
+    this.render();
   }
 
   // 处理添加任务
@@ -2802,49 +2791,49 @@ class DailyPlanner {
       '七月', '八月', '九月', '十月', '十一月', '十二月'
     ];
 
-    const isSelectedDate = (day: number) => {
+    const isSelectedDate = (d: Date) => {
       if (!this.selectedDate) return false;
-      return day === this.selectedDate.getDate() &&
-             month === this.selectedDate.getMonth() &&
-             year === this.selectedDate.getFullYear();
+      return d.getDate() === this.selectedDate.getDate() &&
+             d.getMonth() === this.selectedDate.getMonth() &&
+             d.getFullYear() === this.selectedDate.getFullYear();
     };
 
-    const isToday = (day: number) => {
+    const isToday = (d: Date) => {
       const today = new Date();
-      return day === today.getDate() &&
-             month === today.getMonth() &&
-             year === today.getFullYear();
+      return d.getDate() === today.getDate() &&
+             d.getMonth() === today.getMonth() &&
+             d.getFullYear() === today.getFullYear();
     };
 
     // 获取日期的任务列表
-    const getDayTasks = (day: number): Task[] => {
-      const dateKey = this.formatDate(new Date(year, month, day));
+    const getDayTasks = (d: Date): Task[] => {
+      const dateKey = this.formatDate(d);
       return this.tasks[dateKey] || [];
     };
 
-    let calendarDays = '';
-
-    for (let i = 0; i < startingDay; i++) {
-      calendarDays += `<div class="min-h-[100px] ${isDark ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-lg"></div>`;
-    }
-
-    for (let day = 1; day <= totalDays; day++) {
-      const date = new Date(year, month, day);
-      const dateKey = this.formatDate(date);
-      const today = isToday(day);
-      const selected = isSelectedDate(day);
-      const dayTasks = getDayTasks(day);
-      const holidayInfo = this.getHolidayInfo(date);
+    // 生成日期格子的函数
+    const generateDayCell = (d: Date, isCurrentMonth: boolean): string => {
+      const dateKey = this.formatDate(d);
+      const today = isToday(d);
+      const selected = isSelectedDate(d);
+      const dayTasks = getDayTasks(d);
+      const holidayInfo = this.getHolidayInfo(d);
       
       // 获取农历信息
-      const lunarText = this.getLunarDisplayText(date);
-      const isJieQi = this.isJieQiDay(date);
+      const lunarText = this.getLunarDisplayText(d);
+      const isJieQi = this.isJieQiDay(d);
       
       // 日期数字样式
       let dayNumClass = isDark ? 'text-gray-200' : 'text-gray-800';
       let lunarClass = isDark ? 'text-gray-500' : 'text-gray-400';
+      let bgOpacity = '';
       
-      if (today) {
+      // 非当前月的日期样式
+      if (!isCurrentMonth) {
+        dayNumClass = isDark ? 'text-gray-500' : 'text-gray-400';
+        lunarClass = isDark ? 'text-gray-600' : 'text-gray-300';
+        bgOpacity = isDark ? 'bg-gray-800/30' : 'bg-gray-50/50';
+      } else if (today) {
         dayNumClass = 'bg-blue-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold';
         lunarClass = 'text-blue-400';
       } else if (holidayInfo && holidayInfo.holiday) {
@@ -2855,7 +2844,7 @@ class DailyPlanner {
         lunarClass = 'text-orange-400';
       } else {
         // 默认周末显示红色
-        const dayOfWeek = date.getDay();
+        const dayOfWeek = d.getDay();
         if (dayOfWeek === 0 || dayOfWeek === 6) {
           dayNumClass = 'text-red-400';
           lunarClass = 'text-red-300';
@@ -2864,7 +2853,7 @@ class DailyPlanner {
       
       // 节假日标签
       let holidayTag = '';
-      if (holidayInfo) {
+      if (holidayInfo && isCurrentMonth) {
         if (holidayInfo.holiday) {
           holidayTag = `<span class="absolute top-1 right-1 text-[9px] bg-red-500 text-white px-1 rounded">${holidayInfo.name}</span>`;
         } else {
@@ -2880,14 +2869,13 @@ class DailyPlanner {
       
       visibleTasks.forEach(task => {
         const taskPriority = (task.priority || 'normal') as TaskPriority;
-        const priorityConfig = PRIORITY_CONFIG[taskPriority] || PRIORITY_CONFIG['normal'];
         const dotColor = taskPriority === 'urgent-important' ? 'bg-red-500' :
                         taskPriority === 'important' ? 'bg-yellow-500' :
                         taskPriority === 'urgent' ? 'bg-orange-500' : 'bg-gray-400';
         
         tasksHTML += `
           <div class="text-[11px] truncate ${task.completed ? 'line-through opacity-50' : ''} ${isDark ? 'text-gray-300' : 'text-gray-700'} flex items-center gap-1 px-1 py-0.5 rounded ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} cursor-pointer"
-               onclick="event.stopPropagation(); planner.selectDate(new Date(${year}, ${month}, ${day}))">
+               onclick="event.stopPropagation(); planner.selectDate(new Date(${d.getFullYear()}, ${d.getMonth()}, ${d.getDate()}))">
             <span class="w-1.5 h-1.5 ${dotColor} rounded-full flex-shrink-0"></span>
             <span class="truncate">${task.text}</span>
           </div>
@@ -2902,19 +2890,19 @@ class DailyPlanner {
         `;
       }
 
-      calendarDays += `
-        <div class="min-h-[100px] ${bgClass} rounded-lg shadow cursor-pointer transition-all hover:shadow-md ${today ? 'ring-2 ring-blue-500' : ''} ${selected ? 'ring-2 ring-blue-400' : ''} relative overflow-hidden"
+      return `
+        <div class="min-h-[100px] ${bgClass} ${bgOpacity} rounded-lg shadow cursor-pointer transition-all hover:shadow-md ${today ? 'ring-2 ring-blue-500' : ''} ${selected ? 'ring-2 ring-blue-400' : ''} relative overflow-hidden"
              data-date="${dateKey}"
-             onmouseenter="planner.hoverDate(new Date(${year}, ${month}, ${day}))"
+             onmouseenter="planner.hoverDate(new Date(${d.getFullYear()}, ${d.getMonth()}, ${d.getDate()}))"
              onmouseleave="planner.leaveDate()"
-             onclick="planner.selectDate(new Date(${year}, ${month}, ${day}))">
+             onclick="planner.selectDate(new Date(${d.getFullYear()}, ${d.getMonth()}, ${d.getDate()}))">
           <!-- 日期头部 -->
           <div class="flex items-start justify-between p-1">
             <div class="flex flex-col">
-              <span class="${today ? dayNumClass : 'text-sm font-medium ' + dayNumClass}">${day}</span>
+              <span class="${today ? dayNumClass : 'text-sm font-medium ' + dayNumClass}">${d.getDate()}</span>
               <span class="text-[9px] ${lunarClass} ${isJieQi ? 'text-green-400 font-medium' : ''}">${lunarText}</span>
             </div>
-            ${!today ? holidayTag : ''}
+            ${!today && isCurrentMonth ? holidayTag : ''}
           </div>
           <!-- 任务列表 -->
           <div class="px-1 pb-1 space-y-0.5">
@@ -2922,6 +2910,31 @@ class DailyPlanner {
           </div>
         </div>
       `;
+    };
+
+    let calendarDays = '';
+
+    // 上个月的日期填充
+    const prevMonth = new Date(year, month, 0); // 上个月最后一天
+    const prevMonthDays = prevMonth.getDate();
+    for (let i = startingDay - 1; i >= 0; i--) {
+      const day = prevMonthDays - i;
+      const date = new Date(year, month - 1, day);
+      calendarDays += generateDayCell(date, false);
+    }
+
+    // 当前月的日期
+    for (let day = 1; day <= totalDays; day++) {
+      const date = new Date(year, month, day);
+      calendarDays += generateDayCell(date, true);
+    }
+
+    // 下个月的日期填充（补齐到42天，6行）
+    const totalCells = startingDay + totalDays;
+    const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+    for (let day = 1; day <= remainingCells; day++) {
+      const date = new Date(year, month + 1, day);
+      calendarDays += generateDayCell(date, false);
     }
 
     return `
