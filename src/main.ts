@@ -664,8 +664,23 @@ class DailyPlanner {
     } else {
       this.selectedTagsForTask.add(tagId);
     }
-    // 重新渲染以更新标签选中状态
-    this.render();
+    // 只更新标签按钮样式，不重新渲染整个页面（避免输入框内容丢失）
+    const btn = document.querySelector(`[data-tag-id="${tagId}"]`);
+    if (btn) {
+      if (this.selectedTagsForTask.has(tagId)) {
+        btn.classList.add('ring-2', 'ring-blue-500', 'ring-offset-1');
+        // 更新按钮文本
+        const currentText = btn.textContent || '';
+        if (!currentText.includes('✓')) {
+          btn.textContent = currentText + ' ✓';
+        }
+      } else {
+        btn.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-1');
+        // 移除 ✓
+        const currentText = btn.textContent || '';
+        btn.textContent = currentText.replace(/\s*✓/g, '');
+      }
+    }
   }
 
   // 处理添加任务
@@ -3166,7 +3181,8 @@ class DailyPlanner {
               <span class="text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}">标签：</span>
               ${this.getAllTags().slice(0, 6).map(tag => `
                 <button type="button"
-                        onclick="planner.toggleTagSelection('${tag.id}')"
+                        data-tag-id="${tag.id}"
+                        onclick="event.stopPropagation(); planner.toggleTagSelection('${tag.id}')"
                         class="text-[10px] px-1.5 py-0.5 rounded-full transition-all ${tag.color} ${tag.textColor} hover:opacity-80 ${this.selectedTagsForTask.has(tag.id) ? 'ring-2 ring-blue-500 ring-offset-1' : ''}">
                   ${tag.icon}${this.selectedTagsForTask.has(tag.id) ? ' ✓' : ''}
                 </button>
