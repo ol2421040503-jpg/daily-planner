@@ -131,20 +131,28 @@ function checkForUpdate(manual = false) {
   isManualCheck = manual;
   console.log('正在检查更新...' + (manual ? '（手动）' : '（自动）'));
   
-  // 直接使用 GitHub 更新源（Gitee 不上传安装包）
-  try {
+  // 优先使用 Gitee 更新源（国内用户更快）
+  // 需要先在 Gitee Release 上传安装包
+  const giteeFeedURL = 'https://gitee.com/europe-and-oceania/daily-planner/releases/download/latest';
+  
+  autoUpdater.setFeedURL({
+    provider: 'generic',
+    url: giteeFeedURL
+  });
+  console.log('使用 Gitee 更新源:', giteeFeedURL);
+  
+  autoUpdater.checkForUpdates().catch(err => {
+    console.error('Gitee 更新源失败:', err.message);
+    // 回退到 GitHub
+    console.log('尝试使用 GitHub 更新源...');
     autoUpdater.setFeedURL({
       provider: 'github',
       owner: 'ol2421040503-jpg',
       repo: 'daily-planner'
     });
-    console.log('使用 GitHub 更新源');
-  } catch (e) {
-    console.log('设置更新源失败:', e.message);
-  }
-  
-  autoUpdater.checkForUpdates().catch(err => {
-    console.error('检查更新失败:', err);
+    autoUpdater.checkForUpdates().catch(err2 => {
+      console.error('GitHub 更新源也失败:', err2.message);
+    });
   });
 }
 
