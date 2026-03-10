@@ -4614,22 +4614,22 @@ class DailyPlanner {
           <div class="flex items-center justify-between mb-6 relative z-50 flex-wrap gap-2">
             <h1 class="text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}">${this.viewMode === 'month' ? '每日规划' : '周规划'}</h1>
             <div class="flex items-center gap-2 flex-wrap">
-              <button onclick="planner.jumpToToday()"
+              <button onclick="event.stopPropagation(); planner.jumpToToday()"
                       class="px-3 py-2 ${isDark ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white rounded-lg transition-colors shadow-md text-sm font-medium"
                       title="跳转到今天">
                 今天
               </button>
               <div class="flex rounded-lg overflow-hidden shadow-md">
-                <button onclick="planner.setViewMode('month')"
+                <button onclick="event.stopPropagation(); planner.setViewMode('month')"
                         class="px-3 py-2 text-sm font-medium transition-colors ${this.viewMode === 'month' ? 'bg-blue-500 text-white' : isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-white text-gray-700 hover:bg-gray-100'}">
                   月
                 </button>
-                <button onclick="planner.setViewMode('week')"
+                <button onclick="event.stopPropagation(); planner.setViewMode('week')"
                         class="px-3 py-2 text-sm font-medium transition-colors border-l ${isDark ? 'border-gray-600' : 'border-gray-200'} ${this.viewMode === 'week' ? 'bg-blue-500 text-white' : isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-white text-gray-700 hover:bg-gray-100'}">
                   周
                 </button>
               </div>
-              <button onclick="planner.showSearchPanel = true; planner.render();"
+              <button onclick="event.stopPropagation(); planner.showSearchPanel = true; planner.render();"
                       class="p-2 ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-white hover:bg-gray-100'} rounded-lg transition-colors shadow-md"
                       title="搜索任务">
                 <svg class="w-5 h-5 ${isDark ? 'text-gray-200' : 'text-gray-700'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4637,7 +4637,7 @@ class DailyPlanner {
                 </svg>
               </button>
               <div class="relative">
-                <button onclick="planner.toggleThemeMenu()"
+                <button onclick="event.stopPropagation(); planner.toggleThemeMenu()"
                         class="p-2 ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-white hover:bg-gray-100'} rounded-lg transition-colors shadow-md"
                         title="主题设置">
                   <svg class="w-5 h-5 ${isDark ? 'text-gray-200' : 'text-gray-700'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4668,7 +4668,7 @@ class DailyPlanner {
                 ` : ''}
               </div>
               <div class="relative">
-                <button onclick="planner.toggleMoreMenu()"
+                <button onclick="event.stopPropagation(); planner.toggleMoreMenu()"
                         class="p-2 ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-white hover:bg-gray-100'} rounded-lg transition-colors shadow-md"
                         title="更多功能"
                         id="moreMenuBtn">
@@ -4677,11 +4677,11 @@ class DailyPlanner {
                   </svg>
                 </button>
               </div>
-              <button onclick="planner.toggleQuadrantView()"
+              <button onclick="event.stopPropagation(); planner.toggleQuadrantView()"
                       class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors shadow-md text-sm font-medium">
                 四象限
               </button>
-              <button onclick="planner.toggleStatsModal()"
+              <button onclick="event.stopPropagation(); planner.toggleStatsModal()"
                       class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-md text-sm font-medium">
                 统计
               </button>

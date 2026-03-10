@@ -15,7 +15,7 @@ let tray = null;
 let reminderInterval;
 
 // 应用版本
-const APP_VERSION = '1.2.2';
+const APP_VERSION = '1.2.3';
 
 // 更新状态
 let updateDownloaded = false;
