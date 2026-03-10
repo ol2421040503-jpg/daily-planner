@@ -7,9 +7,12 @@ on:
   workflow_dispatch: # 也支持手动触发
 
 jobs:
-  build:
+  # Job 1: 构建并上传到 GitHub Release
+  build-and-github:
     runs-on: windows-latest
-
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -75,11 +78,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # 同步代码和安装包到 Gitee（并行执行，不阻塞 GitHub Release）
-  sync-to-gitee:
-    needs: build
+  # Job 2: 同步代码到 Gitee（独立运行）
+  sync-code-to-gitee:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to Gitee
+        run: |
+          git remote add gitee https://oauth2:${{ secrets.GITEE_TOKEN }}@gitee.com/europe-and-oceania/daily-planner.git
+          git push gitee --all --force
+          git push gitee --tags --force
+          echo "✅ 代码已同步到 Gitee"
+
+  # Job 3: 上传到 Gitee Release（独立运行，需要 artifacts）
+  upload-to-gitee:
+    needs: build-and-github
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
     
     steps:
       - name: Checkout code
@@ -92,13 +111,6 @@ jobs:
         with:
           name: installer
           path: ./installer
-
-      - name: Push to Gitee
-        run: |
-          git remote add gitee https://oauth2:${{ secrets.GITEE_TOKEN }}@gitee.com/europe-and-oceania/daily-planner.git
-          git push gitee --all --force
-          git push gitee --tags --force
-          echo "✅ 代码已同步到 Gitee"
 
       - name: List installer files
         run: |
@@ -145,20 +157,20 @@ jobs:
               filename=$(basename "$file")
               echo "上传: ${filename}"
               
-              response=$(curl -s -X POST \
+              curl -s -X POST \
                 "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases/${RELEASE_ID}/attach_files" \
                 -F "access_token=${{ secrets.GITEE_TOKEN }}" \
-                -F "file=@${file}")
+                -F "file=@${file}"
               
-              echo "响应: ${response}"
+              echo ""
             fi
           done
 
-      - name: Upload installer to Gitee (with retry)
+      - name: Upload installer to Gitee
         env:
           RELEASE_ID: ${{ steps.create_release.outputs.release_id }}
         run: |
-          echo "📤 上传安装包到 Gitee（带重试）..."
+          echo "📤 上传安装包到 Gitee..."
           
           # 找到 .exe 文件
           EXE_FILE=$(find ./installer -name "*.exe" | head -1)
@@ -172,42 +184,24 @@ jobs:
           filesize=$(stat -c%s "$EXE_FILE")
           echo "安装包: ${filename} ($(numfmt --to=iec $filesize))"
           
-          # 重试上传，最多 3 次
-          max_retries=3
-          retry=0
-          success=false
+          # 使用 curl 上传，设置超时 30 分钟
+          echo "开始上传..."
+          curl -v --progress-bar --max-time 1800 -X POST \
+            "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases/${RELEASE_ID}/attach_files" \
+            -F "access_token=${{ secrets.GITEE_TOKEN }}" \
+            -F "file=@${EXE_FILE}" \
+            -o response.txt 2>&1
           
-          while [ $retry -lt $max_retries ] && [ "$success" = false ]; do
-            retry=$((retry + 1))
-            echo "第 ${retry} 次尝试上传..."
-            
-            # 使用更长的超时时间，显示进度
-            response=$(curl --progress-bar --max-time 1800 -X POST \
-              "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases/${RELEASE_ID}/attach_files" \
-              -F "access_token=${{ secrets.GITEE_TOKEN }}" \
-              -F "file=@${EXE_FILE}" \
-              -o response.txt -w "%{http_code}" 2>&1)
-            
-            http_code=$(tail -1 response.txt 2>/dev/null || echo "$response")
-            response_body=$(head -n -1 response.txt 2>/dev/null || cat response.txt)
-            
-            echo "HTTP 状态码: ${http_code}"
-            echo "响应: ${response_body}"
-            
-            # 检查是否成功（HTTP 200 或响应包含 id）
-            if echo "$response_body" | grep -q '"id"'; then
-              echo "✅ 上传成功！"
-              success=true
-            else
-              echo "⚠️ 上传失败，等待 30 秒后重试..."
-              sleep 30
-            fi
-          done
+          echo ""
+          echo "响应内容:"
+          cat response.txt
           
-          if [ "$success" = false ]; then
-            echo "❌ 上传失败，已尝试 ${max_retries} 次"
+          # 检查是否成功
+          if grep -q '"id"' response.txt; then
+            echo ""
+            echo "✅ Gitee Release 上传成功！"
+          else
+            echo ""
+            echo "❌ Gitee Release 上传失败"
             echo "请手动从 GitHub 下载并上传到 Gitee"
-            exit 0  # 不阻止整个工作流
           fi
-          
-          echo "✅ Gitee Release 发布完成！"
