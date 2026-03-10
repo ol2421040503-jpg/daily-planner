@@ -42,6 +42,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer
+          path: |
+            dist-electron/*.exe
+            dist-electron/*.yml
+            dist-electron/*.blockmap
+          retention-days: 1
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -65,17 +75,23 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # 同步代码到 Gitee（不包含安装包，安装包需手动上传）
+  # 同步代码和安装包到 Gitee
   sync-to-gitee:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: installer
+          path: ./installer
 
       - name: Push to Gitee
         run: |
@@ -84,25 +100,51 @@ jobs:
           git push gitee --tags --force
           echo "✅ 代码已同步到 Gitee"
 
-      - name: Create Gitee Release
+      - name: List installer files
+        run: |
+          echo "📦 安装包文件列表："
+          ls -la ./installer/
+
+      - name: Create Gitee Release with assets
         run: |
           TAG_NAME=${GITHUB_REF#refs/tags/}
           VERSION=${TAG_NAME#v}
           
-          echo "正在创建 Gitee Release ${TAG_NAME}..."
+          echo "🚀 正在创建 Gitee Release ${TAG_NAME}..."
           
           # 创建 Release
-          RESPONSE=$(curl -s -X POST "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases" \
+          RELEASE_RESPONSE=$(curl -s -X POST "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases" \
             -H "Content-Type: application/json" \
             -d "{
               \"access_token\": \"${{ secrets.GITEE_TOKEN }}\",
               \"tag_name\": \"${TAG_NAME}\",
               \"name\": \"每日规划 v${VERSION}\",
-              \"body\": \"## 每日规划 v${VERSION}\\n\\n### 国内快速下载\\n请从 GitHub Releases 页面下载安装包，然后手动上传到此处。\\n\\nGitHub Releases: https://github.com/ol2421040503-jpg/daily-planner/releases\\n\\n### 更新说明\\n请查看 GitHub Releases 页面获取详细更新内容。\\n\\n---\\n> 作者：严辉村高斯林\",
+              \"body\": \"## 每日规划 v${VERSION}\\n\\n### 更新说明\\n请查看 [GitHub Releases](https://github.com/ol2421040503-jpg/daily-planner/releases) 获取详细更新内容。\\n\\n---\\n> 作者：严辉村高斯林\",
               \"prerelease\": false
             }")
           
-          echo "Gitee Release 响应: ${RESPONSE}"
-          echo "✅ Gitee Release 创建完成"
-          echo ""
-          echo "⚠️ 请手动下载 GitHub 安装包并上传到 Gitee Release"
+          echo "Release 创建响应: ${RELEASE_RESPONSE}"
+          
+          # 提取 release id
+          RELEASE_ID=$(echo "${RELEASE_RESPONSE}" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
+          echo "Release ID: ${RELEASE_ID}"
+          
+          # 上传安装包
+          echo "📤 正在上传安装包到 Gitee..."
+          
+          for file in ./installer/*; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              echo "上传: ${filename}"
+              
+              UPLOAD_RESPONSE=$(curl -s -X POST \
+                "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases/${RELEASE_ID}/attach_files" \
+                -H "Content-Type: multipart/form-data" \
+                -F "access_token=${{ secrets.GITEE_TOKEN }}" \
+                -F "file=@${file}")
+              
+              echo "上传响应: ${UPLOAD_RESPONSE}"
+            fi
+          done
+          
+          echo "✅ Gitee Release 发布完成！"
