@@ -299,6 +299,7 @@ class DailyPlanner {
   private showSearchPanel: boolean = false;  // 显示搜索面板
   private showReminderSettings: boolean = false;  // 显示提醒设置弹窗
   private showShortcutHelp: boolean = false;  // 显示快捷键帮助弹窗
+  private showContactInfo: boolean = false;  // 显示联系作者弹窗
   private showMonthPicker: boolean = false;  // 显示月份选择器
   private yearRangeOffset: number = 0;  // 年份选择器偏移量
   private selectedPickerYear: number = 0;  // 月份选择器中选中的年份
@@ -3371,6 +3372,75 @@ class DailyPlanner {
     `;
   }
 
+  // 生成联系作者弹窗
+  private generateContactInfoHTML(): string {
+    if (!this.showContactInfo) return '';
+    
+    const isDark = this.themeMode === 'dark';
+    const bgClass = isDark ? 'bg-gray-800' : 'bg-white';
+    const textClass = isDark ? 'text-gray-100' : 'text-gray-800';
+    const labelClass = isDark ? 'text-gray-400' : 'text-gray-500';
+    const cardBg = isDark ? 'bg-gray-700' : 'bg-gray-50';
+
+    return `
+      <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
+           onclick="planner.showContactInfo = false; planner.render();">
+        <div class="${bgClass} rounded-xl shadow-2xl p-6 w-full max-w-sm"
+             onclick="event.stopPropagation()">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold ${textClass}">👤 联系作者</h2>
+            <button onclick="planner.showContactInfo = false; planner.render();"
+                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+              <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="space-y-4">
+            <div class="text-center py-4">
+              <div class="w-20 h-20 mx-auto mb-3 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                <span class="text-3xl">👨‍💻</span>
+              </div>
+              <h3 class="text-lg font-semibold ${textClass}">严辉村高斯林</h3>
+              <p class="text-sm ${labelClass}">每日规划 作者</p>
+            </div>
+
+            <div class="space-y-3">
+              <div class="flex items-center gap-3 p-3 ${cardBg} rounded-lg">
+                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <p class="text-xs ${labelClass}">电话 / 微信</p>
+                  <p class="font-medium ${textClass}">19373108815</p>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3 p-3 ${cardBg} rounded-lg">
+                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <p class="text-xs ${labelClass}">邮箱</p>
+                  <p class="font-medium ${textClass}">2421040503@qq.com</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-2 text-center">
+              <p class="text-xs ${labelClass}">感谢使用每日规划！欢迎反馈建议 🙏</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   // 生成复制任务弹窗HTML
   private generateCopyModalHTML(): string {
     if (!this.showCopyModal || !this.copyingTask) return '';
@@ -3906,6 +3976,14 @@ class DailyPlanner {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
             </svg>
             检查更新
+          </button>
+          <div class="border-t ${isDark ? 'border-gray-700' : ''} my-1"></div>
+          <button onclick="planner.showContactInfo = true; planner.showMoreMenu = false; planner.render();"
+                  class="flex items-center gap-2 px-4 py-2 w-full ${textClass} ${hoverClass} transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+            联系作者
           </button>
           <div class="border-t ${isDark ? 'border-gray-700' : ''} my-1"></div>
           <div class="px-4 py-2 text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'} text-center">
@@ -4703,6 +4781,7 @@ class DailyPlanner {
       ${this.generateQuickTagSelectorHTML()}
       ${this.generateUpdateModalHTML()}
       ${this.generateShortcutHelpHTML()}
+      ${this.generateContactInfoHTML()}
     `;
 
     // 使用 requestAnimationFrame 确保 DOM 渲染完成后再添加动画类
