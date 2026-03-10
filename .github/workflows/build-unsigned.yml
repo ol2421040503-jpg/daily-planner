@@ -75,11 +75,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # 同步代码和安装包到 Gitee
+  # 同步代码和安装包到 Gitee（并行执行，不阻塞 GitHub Release）
   sync-to-gitee:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 45  # 增加超时时间
+    timeout-minutes: 45
     
     steps:
       - name: Checkout code
