@@ -68,6 +68,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('request-reminder-data', callback);
   },
 
+  // 监听日终提醒检查
+  onCheckDayEndTasks: (callback) => {
+    ipcRenderer.on('check-day-end-tasks', callback);
+  },
+
+  // 发送日终提醒数据
+  sendDayEndReminderData: (data) => {
+    ipcRenderer.send('day-end-reminder-data', data);
+  },
+
   // 监听跳转到日期
   onNavigateToDate: (callback) => {
     ipcRenderer.on('navigate-to-date', (event, date) => {

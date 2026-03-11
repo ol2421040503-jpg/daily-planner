@@ -31,6 +31,8 @@ declare global {
       sendReminderData: (data: { tasks: DateTasks; anniversaries: Anniversary[] }) => void;
       getReminderConfig: () => Promise<{ anniversary: number; high: number; medium: number; low: number }>;
       onRequestReminderData: (callback: () => void) => void;
+      onCheckDayEndTasks: (callback: () => void) => void;
+      sendDayEndReminderData: (data: { pendingCount: number; overdueCount: number }) => void;
       onNavigateToDate: (callback: (date: string) => void) => void;
       // 任务进度相关
       sendTaskProgress: (data: { completed: number; total: number }) => void;
@@ -61,7 +63,7 @@ declare global {
 }
 
 // ==================== 版本配置 ====================
-const APP_VERSION = '1.2.5';
+const APP_VERSION = '1.3.0';
 const VERSION_CHECK_URL = 'https://your-server.com/api/version'; // 替换为你的版本检查API
 const RELEASE_NOTES: Record<string, string[]> = {
   '1.0.0': [
@@ -815,6 +817,11 @@ class DailyPlanner {
         this.sendReminderDataToMain();
       });
 
+      // 监听日终提醒检查
+      window.electronAPI.onCheckDayEndTasks(() => {
+        this.sendDayEndReminderDataToMain();
+      });
+
       // 监听跳转到日期
       window.electronAPI.onNavigateToDate((date: string) => {
         this.jumpToDate(date);
@@ -884,6 +891,21 @@ class DailyPlanner {
       window.electronAPI.sendReminderData({
         tasks: this.tasks,
         anniversaries: this.anniversaries
+      });
+    }
+  }
+
+  // 发送日终提醒数据到主进程
+  private sendDayEndReminderDataToMain(): void {
+    if (window.electronAPI) {
+      const today = this.formatDate(new Date());
+      const todayTasks = this.tasks[today] || [];
+      const pendingCount = todayTasks.filter(t => !t.completed).length;
+      const overdueCount = this.getOverdueTasks().length;
+      
+      window.electronAPI.sendDayEndReminderData({
+        pendingCount,
+        overdueCount
       });
     }
   }
@@ -1714,6 +1736,85 @@ class DailyPlanner {
         this.render(); // 重新渲染整个页面
       }
     }
+  }
+
+  // 获取过期未完成任务（昨天及之前的未完成任务）
+  private getOverdueTasks(): Array<{ date: string; task: Task }> {
+    const today = this.formatDate(new Date());
+    const overdueTasks: Array<{ date: string; task: Task }> = [];
+    
+    Object.keys(this.tasks).forEach(dateKey => {
+      // 只处理今天之前的日期
+      if (dateKey < today) {
+        const dayTasks = this.tasks[dateKey] || [];
+        dayTasks.forEach(task => {
+          // 只获取未完成的任务
+          if (!task.completed) {
+            overdueTasks.push({ date: dateKey, task });
+          }
+        });
+      }
+    });
+    
+    // 按日期排序（最近的在前）
+    overdueTasks.sort((a, b) => b.date.localeCompare(a.date));
+    return overdueTasks;
+  }
+
+  // 将过期任务延期到指定日期
+  private postponeTaskToDate(taskId: string, fromDate: string, toDate: string): void {
+    const taskIndex = this.tasks[fromDate]?.findIndex(t => t.id === taskId);
+    if (taskIndex === undefined || taskIndex === -1) return;
+    
+    const task = this.tasks[fromDate][taskIndex];
+    
+    // 从原日期删除
+    this.tasks[fromDate].splice(taskIndex, 1);
+    if (this.tasks[fromDate].length === 0) {
+      delete this.tasks[fromDate];
+    }
+    
+    // 添加到新日期
+    if (!this.tasks[toDate]) {
+      this.tasks[toDate] = [];
+    }
+    task.date = toDate;
+    task.time = this.getCurrentTime();
+    this.tasks[toDate].push(task);
+    
+    this.saveTasks();
+    this.render();
+  }
+
+  // 将所有过期任务延期到今天
+  private postponeAllOverdueTasks(): void {
+    const today = this.formatDate(new Date());
+    const overdueTasks = this.getOverdueTasks();
+    
+    if (overdueTasks.length === 0) return;
+    
+    // 按日期分组，从最老的开始处理（避免索引问题）
+    const sortedDates = [...new Set(overdueTasks.map(o => o.date))].sort();
+    
+    sortedDates.forEach(fromDate => {
+      const tasksToMove = overdueTasks.filter(o => o.date === fromDate);
+      tasksToMove.forEach(({ task }) => {
+        if (!this.tasks[today]) {
+          this.tasks[today] = [];
+        }
+        // 从原日期删除
+        this.tasks[fromDate] = this.tasks[fromDate].filter(t => t.id !== task.id);
+        if (this.tasks[fromDate].length === 0) {
+          delete this.tasks[fromDate];
+        }
+        // 添加到今天
+        const newTask = { ...task, date: today, time: this.getCurrentTime() };
+        this.tasks[today].push(newTask);
+      });
+    });
+    
+    this.saveTasks();
+    this.render();
   }
 
   // 打开复制任务弹窗
@@ -2999,6 +3100,85 @@ class DailyPlanner {
     `;
   }
 
+  // 生成过期任务专区HTML
+  private generateOverdueTasksHTML(isDark: boolean): string {
+    const overdueTasks = this.getOverdueTasks();
+    
+    if (overdueTasks.length === 0) {
+      return '';
+    }
+    
+    const bgClass = isDark ? 'bg-red-900/30 border-red-700' : 'bg-red-50 border-red-200';
+    const textClass = isDark ? 'text-red-300' : 'text-red-700';
+    const taskBg = isDark ? 'bg-red-900/50' : 'bg-white';
+    const today = this.formatDate(new Date());
+    
+    // 按日期分组
+    const groupedByDate: Record<string, Task[]> = {};
+    overdueTasks.forEach(({ date, task }) => {
+      if (!groupedByDate[date]) {
+        groupedByDate[date] = [];
+      }
+      groupedByDate[date].push(task);
+    });
+    
+    const dateList = Object.keys(groupedByDate).sort((a, b) => b.localeCompare(a));
+    
+    // 计算每个日期距离今天的天数
+    const getDaysAgo = (dateStr: string): number => {
+      const date = new Date(dateStr);
+      const todayDate = new Date(today);
+      const diff = Math.floor((todayDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+      return diff;
+    };
+    
+    let tasksHTML = '';
+    dateList.forEach(date => {
+      const daysAgo = getDaysAgo(date);
+      const daysText = daysAgo === 1 ? '昨天' : `${daysAgo}天前`;
+      
+      groupedByDate[date].forEach(task => {
+        const priority = getPriorityConfig(task.priority || 'normal');
+        tasksHTML += `
+          <div class="flex items-center gap-2 p-1.5 ${taskBg} rounded group text-xs">
+            <input type="checkbox"
+                   onchange="planner.postponeTaskToDate('${task.id}', '${date}', '${today}')"
+                   class="w-3 h-3 rounded border-red-400 text-green-500 cursor-pointer flex-shrink-0"
+                   title="勾选即延期到今天">
+            <span class="flex-1 truncate ${textClass}">${task.text}</span>
+            <span class="px-1 py-0.5 rounded ${priority.bgColor} ${priority.color} text-[10px]">${priority.shortLabel}</span>
+            <span class="text-[10px] text-red-400">${daysText}</span>
+            <button onclick="planner.postponeTaskToDate('${task.id}', '${date}', '${today}')"
+                    class="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 bg-blue-500 text-white rounded text-[10px] hover:bg-blue-600 transition-all">
+              延期
+            </button>
+          </div>
+        `;
+      });
+    });
+    
+    return `
+      <div class="mx-4 my-2 p-2 ${bgClass} border rounded-lg">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-red-500">⚠️</span>
+            <span class="text-xs font-medium ${textClass}">过期未完成 (${overdueTasks.length})</span>
+          </div>
+          <button onclick="planner.postponeAllOverdueTasks()"
+                  class="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors">
+            全部延期到今天
+          </button>
+        </div>
+        <div class="space-y-1 max-h-32 overflow-y-auto">
+          ${tasksHTML}
+        </div>
+        <div class="text-[10px] text-red-400 mt-1">
+          💡 勾选或点击"延期"可将任务移至今天
+        </div>
+      </div>
+    `;
+  }
+
   // 生成任务面板HTML（右侧侧边栏）
   private generateTaskPanelHTML(): string {
     const displayDate = this.getDisplayDate();
@@ -3153,6 +3333,9 @@ class DailyPlanner {
           </div>
           
           ${anniversaryHtml}
+          
+          <!-- 过期任务专区 -->
+          ${this.generateOverdueTasksHTML(isDark)}
           
           <!-- 添加任务区域 -->
           <div class="px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}">
