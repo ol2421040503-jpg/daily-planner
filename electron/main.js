@@ -15,7 +15,7 @@ let tray = null;
 let reminderInterval;
 
 // 应用版本
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.2.5';
 
 // 更新状态
 let updateDownloaded = false;
@@ -503,59 +503,6 @@ function startReminderScheduler() {
   setTimeout(() => {
     performReminderCheck();
   }, 3000);
-
-  // 日终提醒定时器：每小时检查一次，在22:00提醒处理未完成任务
-  setInterval(() => {
-    checkDayEndReminder();
-  }, 60 * 60 * 1000);  // 每小时检查一次
-
-  // 启动后延迟10秒检查一次
-  setTimeout(() => {
-    checkDayEndReminder();
-  }, 10000);
-}
-
-// 日终提醒检查
-let lastDayEndReminderDate = null;
-
-function checkDayEndReminder() {
-  const now = new Date();
-  const hour = now.getHours();
-  const today = now.toISOString().split('T')[0];
-
-  // 只在22:00-23:00之间提醒，且每天只提醒一次
-  if (hour >= 22 && hour < 23 && lastDayEndReminderDate !== today) {
-    if (mainWindow) {
-      mainWindow.webContents.send('check-day-end-tasks');
-    }
-  }
-}
-
-// 处理日终提醒数据
-function handleDayEndReminder(data) {
-  const { pendingCount, overdueCount } = data;
-  const now = new Date();
-  const today = now.toISOString().split('T')[0];
-
-  // 如果有未完成任务或过期任务，发送提醒
-  if (pendingCount > 0 || overdueCount > 0) {
-    let body = '';
-    if (overdueCount > 0 && pendingCount > 0) {
-      body = `今日还有 ${pendingCount} 个任务未完成，另有 ${overdueCount} 个过期任务待处理`;
-    } else if (overdueCount > 0) {
-      body = `有 ${overdueCount} 个过期任务待处理`;
-    } else {
-      body = `今日还有 ${pendingCount} 个任务未完成`;
-    }
-
-    sendNotification(
-      '📋 日终提醒：今日任务未完成',
-      body,
-      {}
-    );
-
-    lastDayEndReminderDate = today;
-  }
 }
 
 // 停止提醒定时器
@@ -657,11 +604,6 @@ ipcMain.handle('send-notification', (event, { title, body, data }) => {
 
 ipcMain.on('reminder-data', (event, data) => {
   handleReminderData(data);
-});
-
-// 处理日终提醒数据
-ipcMain.on('day-end-reminder-data', (event, data) => {
-  handleDayEndReminder(data);
 });
 
 ipcMain.on('test-notification', (event) => {
