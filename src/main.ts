@@ -3384,6 +3384,18 @@ class DailyPlanner {
     this.hoveredDate = null; // 清除悬停状态，避免混淆
     this.showTaskPanel = true; // 显示右侧侧边栏
     this.preselectedTime = ''; // 清空预选时间
+    
+    // 关闭其他面板和弹窗
+    this.showKnowledgeBase = false;
+    this.showStatsModal = false;
+    this.showWeeklySummary = false;
+    this.showMonthlySummary = false;
+    this.showYearlyStats = false;
+    this.showCopyModal = false;
+    this.showThemeMenu = false;
+    this.showQuadrantView = false;
+    this.currentGuide = null;
+    
     this.render(); // 重新渲染整个页面，确保面板显示正确的日期和任务
   }
 
@@ -3644,7 +3656,7 @@ class DailyPlanner {
   private toggleStatsModal(): void {
     this.showStatsModal = !this.showStatsModal;
 
-    // 当打开统计弹窗时，清除悬停状态并关闭其他弹窗
+    // 当打开统计弹窗时，清除悬停状态并关闭其他弹窗/面板
     if (this.showStatsModal) {
       if (!this.selectedDate) {
         this.hoveredDate = null;
@@ -3653,6 +3665,11 @@ class DailyPlanner {
       this.showCopyModal = false;
       this.showThemeMenu = false;
       this.showQuadrantView = false;
+      // 关闭任务面板
+      this.showTaskPanel = false;
+      // 关闭知识库
+      this.showKnowledgeBase = false;
+      this.currentGuide = null;
     }
 
     this.render();
@@ -3662,12 +3679,17 @@ class DailyPlanner {
   private toggleQuadrantView(): void {
     this.showQuadrantView = !this.showQuadrantView;
 
-    // 当打开四象限视图时，关闭其他弹窗
+    // 当打开四象限视图时，关闭其他弹窗和面板
     if (this.showQuadrantView) {
       this.showStatsModal = false;
       this.showCopyModal = false;
       this.showThemeMenu = false;
       this.hoveredDate = null;
+      // 关闭任务面板
+      this.showTaskPanel = false;
+      // 关闭知识库
+      this.showKnowledgeBase = false;
+      this.currentGuide = null;
       // 初始化日期范围
       if (!this.quadrantStartDate || !this.quadrantEndDate) {
         const today = new Date();
@@ -5265,7 +5287,7 @@ class DailyPlanner {
     return `
       <div class="mt-4 p-4 ${bgClass} rounded-xl">
         <div class="flex items-center justify-center gap-3">
-          <button onclick="event.stopPropagation(); planner.showWeeklySummary = true; planner.render();"
+          <button onclick="event.stopPropagation(); planner.openWeeklySummary();"
                   class="flex-1 flex flex-col items-center gap-1 p-3 rounded-lg ${isDark ? 'bg-gray-600 hover:bg-gray-500' : 'bg-white hover:bg-gray-100'} shadow-sm transition-all group">
             <div class="flex items-center gap-2">
               <span class="text-lg">📊</span>
@@ -5273,7 +5295,7 @@ class DailyPlanner {
             </div>
             <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">${weeklyRate}% 完成</div>
           </button>
-          <button onclick="event.stopPropagation(); planner.showMonthlySummary = true; planner.render();"
+          <button onclick="event.stopPropagation(); planner.openMonthlySummary();"
                   class="flex-1 flex flex-col items-center gap-1 p-3 rounded-lg ${isDark ? 'bg-gray-600 hover:bg-gray-500' : 'bg-white hover:bg-gray-100'} shadow-sm transition-all group">
             <div class="flex items-center gap-2">
               <span class="text-lg">📈</span>
@@ -5281,7 +5303,7 @@ class DailyPlanner {
             </div>
             <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">本月表现</div>
           </button>
-          <button onclick="event.stopPropagation(); planner.showYearlyStats = true; planner.render();"
+          <button onclick="event.stopPropagation(); planner.openYearlyStats();"
                   class="flex-1 flex flex-col items-center gap-1 p-3 rounded-lg ${isDark ? 'bg-gray-600 hover:bg-gray-500' : 'bg-white hover:bg-gray-100'} shadow-sm transition-all group">
             <div class="flex items-center gap-2">
               <span class="text-lg">🎊</span>
@@ -5292,7 +5314,7 @@ class DailyPlanner {
         </div>
         <!-- 知识库入口 -->
         <div class="mt-3 pt-3 border-t ${isDark ? 'border-gray-600' : 'border-gray-200'}">
-          <button onclick="event.stopPropagation(); planner.showKnowledgeBase = true; planner.render();"
+          <button onclick="event.stopPropagation(); planner.openKnowledgeBase();"
                   class="w-full flex items-center justify-center gap-2 p-3 rounded-lg ${isDark ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500' : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-400 hover:to-blue-400'} text-white shadow-md transition-all">
             <span class="text-lg">📚</span>
             <span class="text-sm font-medium">个人知识库</span>
@@ -5301,6 +5323,53 @@ class DailyPlanner {
         </div>
       </div>
     `;
+  }
+  
+  // 打开知识库（关闭其他面板）
+  public openKnowledgeBase(): void {
+    this.showKnowledgeBase = true;
+    // 关闭任务面板
+    this.showTaskPanel = false;
+    // 关闭其他弹窗
+    this.showStatsModal = false;
+    this.showCopyModal = false;
+    this.showThemeMenu = false;
+    this.showQuadrantView = false;
+    this.render();
+  }
+  
+  // 打开周总结（关闭其他面板）
+  public openWeeklySummary(): void {
+    this.showWeeklySummary = true;
+    this.showTaskPanel = false;
+    this.closeOtherPanels();
+    this.render();
+  }
+  
+  // 打开月总结（关闭其他面板）
+  public openMonthlySummary(): void {
+    this.showMonthlySummary = true;
+    this.showTaskPanel = false;
+    this.closeOtherPanels();
+    this.render();
+  }
+  
+  // 打开年度总结（关闭其他面板）
+  public openYearlyStats(): void {
+    this.showYearlyStats = true;
+    this.showTaskPanel = false;
+    this.closeOtherPanels();
+    this.render();
+  }
+  
+  // 关闭其他所有面板和弹窗
+  private closeOtherPanels(): void {
+    this.showKnowledgeBase = false;
+    this.showStatsModal = false;
+    this.showCopyModal = false;
+    this.showThemeMenu = false;
+    this.showQuadrantView = false;
+    this.currentGuide = null;
   }
 
   // 生成知识库弹窗 HTML
