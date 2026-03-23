@@ -4980,37 +4980,40 @@ class DailyPlanner {
                       </div>
                     </div>
                     
-                    <!-- 操作说明 -->
-                    <textarea onchange="planner.updateStepContent('${step.id}', 'content', this.value)"
-                              class="w-full px-3 py-2 text-sm rounded-lg border ${inputBg} focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none ml-11"
-                              rows="3"
-                              placeholder="输入操作说明...">${step.content}</textarea>
-                    
-                    <!-- 图片区域 -->
-                    ${step.imageUrl ? `
-                      <div class="mt-3 ml-11 relative">
-                        <img src="${step.imageUrl}" alt="步骤图片" class="w-full max-h-48 object-cover rounded-lg">
-                        <button onclick="planner.removeStepImage('${step.id}')"
-                                class="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 rounded-full transition-colors">
-                          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                          </svg>
-                        </button>
-                      </div>
-                    ` : `
-                      <div class="mt-3 ml-11 flex gap-2">
+                    <!-- 操作说明和图片 -->
+                    <div class="ml-11">
+                      <textarea onchange="planner.updateStepContent('${step.id}', 'content', this.value)"
+                                class="w-full px-3 py-2 text-sm rounded-lg border ${inputBg} focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                                rows="3"
+                                placeholder="输入操作说明...">${step.content}</textarea>
+                      
+                      <!-- 图片显示 -->
+                      ${step.imageUrl ? `
+                        <div class="mt-2 relative inline-block">
+                          <img src="${step.imageUrl}" alt="步骤图片" class="max-w-full max-h-40 object-contain rounded-lg">
+                          <button onclick="planner.removeStepImage('${step.id}')"
+                                  class="absolute -top-2 -right-2 p-1 bg-red-500 hover:bg-red-600 rounded-full transition-colors">
+                            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                          </button>
+                        </div>
+                      ` : ''}
+                      
+                      <!-- 图片操作按钮 -->
+                      <div class="mt-2 flex gap-2">
                         <button onclick="planner.triggerImageUpload('${step.id}')"
-                                class="flex-1 px-3 py-2 text-sm ${isDark ? 'bg-gray-600 hover:bg-gray-500' : 'bg-white hover:bg-gray-100'} border ${isDark ? 'border-gray-500' : 'border-gray-300'} rounded-lg transition-colors flex items-center justify-center gap-1">
+                                class="px-2 py-1 text-xs ${isDark ? 'bg-gray-600 hover:bg-gray-500 text-gray-200' : 'bg-gray-200 hover:bg-gray-300 text-gray-600'} rounded transition-colors flex items-center gap-1">
                           <span>🖼️</span>
                           <span>上传图片</span>
                         </button>
                         <button onclick="planner.triggerScreenshot('${step.id}')"
-                                class="flex-1 px-3 py-2 text-sm ${isDark ? 'bg-gray-600 hover:bg-gray-500' : 'bg-white hover:bg-gray-100'} border ${isDark ? 'border-gray-500' : 'border-gray-300'} rounded-lg transition-colors flex items-center justify-center gap-1">
+                                class="px-2 py-1 text-xs ${isDark ? 'bg-gray-600 hover:bg-gray-500 text-gray-200' : 'bg-gray-200 hover:bg-gray-300 text-gray-600'} rounded transition-colors flex items-center gap-1">
                           <span>📷</span>
-                          <span>截图粘贴 (F1)</span>
+                          <span>截图(F1)</span>
                         </button>
                       </div>
-                    `}
+                    </div>
                   </div>
                 `).join('')}
               </div>
