@@ -1585,6 +1585,56 @@ class DailyPlanner {
     localStorage.setItem('dailyPlannerSummaryNotes', JSON.stringify(this.summaryNotes));
   }
 
+  // 保存周总结文字（带状态提示）
+  public saveWeeklySummaryNoteWithStatus(note: string): void {
+    const key = this.getWeekKey(this.viewingWeekOffset);
+    this.summaryNotes.weekly[key] = note;
+    this.saveSummaryNotes();
+    this.showSaveStatus();
+  }
+
+  // 保存月总结文字（带状态提示）
+  public saveMonthlySummaryNoteWithStatus(note: string): void {
+    const key = this.getMonthKey(this.viewingMonthOffset);
+    this.summaryNotes.monthly[key] = note;
+    this.saveSummaryNotes();
+    this.showSaveStatus();
+  }
+
+  // 保存年度总结文字（带状态提示）
+  public saveYearlySummaryNoteWithStatus(note: string): void {
+    const key = this.getYearKey(this.viewingYearOffset);
+    this.summaryNotes.yearly[key] = note;
+    this.saveSummaryNotes();
+    this.showSaveStatus();
+  }
+
+  // 显示保存状态
+  private showSaveStatus(): void {
+    this.saveStatus = 'saved';
+    this.render();
+    // 2秒后清除状态
+    setTimeout(() => {
+      this.saveStatus = '';
+      this.render();
+    }, 2000);
+  }
+
+  // 生成保存状态HTML
+  private generateSaveStatusHTML(): string {
+    if (this.saveStatus === 'saved') {
+      return `
+        <div class="fixed top-4 right-4 z-[70] px-4 py-2 bg-green-500 text-white rounded-lg shadow-lg flex items-center gap-2 animate-fade-in">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+          <span>已保存</span>
+        </div>
+      `;
+    }
+    return '';
+  }
+
   // 加载知识库指南
   private loadKnowledgeGuides(): KnowledgeGuide[] {
     const saved = localStorage.getItem('dailyPlannerKnowledgeGuides');
@@ -1700,6 +1750,18 @@ class DailyPlanner {
       this.knowledgeGuides[index] = { ...this.currentGuide };
       this.saveKnowledgeGuides();
     }
+  }
+
+  // 保存指南（带状态提示）
+  public saveGuideWithStatus(): void {
+    // 先保存所有编辑区域的内容
+    if (this.currentGuide) {
+      this.currentGuide.steps.forEach(step => {
+        this.saveStepContentFromEditable(step.id);
+      });
+    }
+    this.saveCurrentGuide();
+    this.showSaveStatus();
   }
 
   // 删除指南
@@ -5243,12 +5305,21 @@ class DailyPlanner {
               </svg>
               <span class="${isDark ? 'text-gray-300' : 'text-gray-600'}">返回列表</span>
             </button>
-            <button onclick="planner.showKnowledgeBase = false; planner.currentGuide = null; planner.editingGuideId = ''; planner.render();"
-                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-              <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
+            <div class="flex items-center gap-2">
+              <button onclick="planner.saveGuideWithStatus()"
+                      class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                保存指南
+              </button>
+              <button onclick="planner.showKnowledgeBase = false; planner.currentGuide = null; planner.editingGuideId = ''; planner.render();"
+                      class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
           </div>
           
           <!-- 指南名称 -->
@@ -5461,6 +5532,9 @@ class DailyPlanner {
   
   // 图片放大弹窗
   private enlargedImageUrl: string = '';
+  
+  // 保存状态提示
+  private saveStatus: string = '';  // 'saving' | 'saved' | ''
 
   // 处理粘贴图片
   public handlePaste(event: ClipboardEvent): void {
@@ -5651,11 +5725,20 @@ class DailyPlanner {
           
           <!-- 周总结文字区域 -->
           <div class="mt-4">
-            <h3 class="text-sm font-semibold ${textClass} mb-2">📝 ${this.viewingWeekOffset === 0 ? '本周' : '该周'}感想</h3>
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-semibold ${textClass}">📝 ${this.viewingWeekOffset === 0 ? '本周' : '该周'}感想</h3>
+              <button onclick="const textarea = document.getElementById('weekly-note-textarea'); planner.saveWeeklySummaryNoteWithStatus(textarea.value);"
+                      class="px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                保存
+              </button>
+            </div>
             <textarea 
+              id="weekly-note-textarea"
               class="w-full h-24 p-3 rounded-xl border ${isDark ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400' : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400'} focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               placeholder="写下这周的总结感想..."
-              onchange="planner.saveWeeklySummaryNote(this.value)"
             >${this.summaryNotes.weekly[this.getWeekKey(this.viewingWeekOffset)] || ''}</textarea>
           </div>
           
@@ -5859,11 +5942,20 @@ class DailyPlanner {
           
           <!-- 月总结文字区域 -->
           <div class="mt-4">
-            <h3 class="text-sm font-semibold ${textClass} mb-2">📝 ${this.viewingMonthOffset === 0 ? '本月' : '该月'}感想</h3>
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-semibold ${textClass}">📝 ${this.viewingMonthOffset === 0 ? '本月' : '该月'}感想</h3>
+              <button onclick="const textarea = document.getElementById('monthly-note-textarea'); planner.saveMonthlySummaryNoteWithStatus(textarea.value);"
+                      class="px-3 py-1 text-xs bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                保存
+              </button>
+            </div>
             <textarea 
+              id="monthly-note-textarea"
               class="w-full h-24 p-3 rounded-xl border ${isDark ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400' : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400'} focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
               placeholder="写下这个月的总结感想..."
-              onchange="planner.saveMonthlySummaryNote(this.value)"
             >${this.summaryNotes.monthly[this.getMonthKey(this.viewingMonthOffset)] || ''}</textarea>
           </div>
         </div>
@@ -6131,11 +6223,20 @@ class DailyPlanner {
           
           <!-- 年度总结文字区域 -->
           <div class="mt-4">
-            <h3 class="text-sm font-semibold ${textClass} mb-2">📝 ${this.viewingYearOffset === 0 ? '本年度' : '该年度'}感想</h3>
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-semibold ${textClass}">📝 ${this.viewingYearOffset === 0 ? '本年度' : '该年度'}感想</h3>
+              <button onclick="const textarea = document.getElementById('yearly-note-textarea'); planner.saveYearlySummaryNoteWithStatus(textarea.value);"
+                      class="px-3 py-1 text-xs bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                保存
+              </button>
+            </div>
             <textarea 
+              id="yearly-note-textarea"
               class="w-full h-24 p-3 rounded-xl border ${isDark ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400' : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400'} focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
               placeholder="写下这一年的总结感想..."
-              onchange="planner.saveYearlySummaryNote(this.value)"
             >${this.summaryNotes.yearly[this.getYearKey(this.viewingYearOffset)] || ''}</textarea>
           </div>
         </div>
@@ -6700,6 +6801,7 @@ class DailyPlanner {
       ${this.generateShortcutHelpHTML()}
       ${this.generateContactInfoHTML()}
       ${this.generateKnowledgeBaseHTML()}
+      ${this.generateSaveStatusHTML()}
     `;
 
     // 使用 requestAnimationFrame 确保 DOM 渲染完成后再添加动画类
