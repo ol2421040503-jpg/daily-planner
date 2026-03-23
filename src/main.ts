@@ -5075,24 +5075,28 @@ class DailyPlanner {
                     
                     <!-- 操作说明和图片 -->
                     <div class="ml-11">
-                      <textarea onchange="planner.updateStepContent('${step.id}', 'content', this.value)"
-                                onfocus="planner.setFocusedStep('${step.id}')"
-                                class="w-full px-3 py-2 text-sm rounded-lg border ${inputBg} focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                                rows="3"
-                                placeholder="输入操作说明...">${step.content}</textarea>
-                      
-                      <!-- 图片显示 -->
-                      ${step.imageUrl ? `
-                        <div class="mt-2 relative inline-block">
-                          <img src="${step.imageUrl}" alt="步骤图片" class="max-w-full max-h-40 object-contain rounded-lg">
-                          <button onclick="planner.removeStepImage('${step.id}')"
-                                  class="absolute -top-2 -right-2 p-1 bg-red-500 hover:bg-red-600 rounded-full transition-colors">
-                            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                          </button>
-                        </div>
-                      ` : ''}
+                      <!-- 内容编辑区域（图片+文本框一体化） -->
+                      <div class="w-full rounded-lg border ${isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-white'} overflow-hidden focus-within:ring-2 focus-within:ring-purple-500"
+                           onclick="planner.setFocusedStep('${step.id}')">
+                        <!-- 图片显示区域（在文本框内部上方） -->
+                        ${step.imageUrl ? `
+                          <div class="relative p-2 ${isDark ? 'bg-gray-750' : 'bg-gray-50'} border-b ${isDark ? 'border-gray-600' : 'border-gray-200'}">
+                            <img src="${step.imageUrl}" alt="步骤图片" class="max-w-full max-h-40 object-contain rounded mx-auto">
+                            <button onclick="event.stopPropagation(); planner.removeStepImage('${step.id}')"
+                                    class="absolute top-1 right-1 p-1 bg-red-500 hover:bg-red-600 rounded-full transition-colors shadow-sm">
+                              <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                              </svg>
+                            </button>
+                          </div>
+                        ` : ''}
+                        <!-- 文本输入区域 -->
+                        <textarea onchange="planner.updateStepContent('${step.id}', 'content', this.value)"
+                                  onfocus="planner.setFocusedStep('${step.id}')"
+                                  class="w-full px-3 py-2 text-sm ${isDark ? 'bg-transparent text-gray-100' : 'bg-transparent text-gray-800'} focus:outline-none resize-none"
+                                  rows="3"
+                                  placeholder="输入操作说明...">${step.content}</textarea>
+                      </div>
                       
                       <!-- 图片操作按钮 -->
                       <div class="mt-2 flex gap-2">
