@@ -1526,6 +1526,92 @@ class DailyPlanner {
     this.render();
   }
 
+  // 生成年份选项
+  private generateYearOptions(currentYear: number): string {
+    const thisYear = new Date().getFullYear();
+    let options = '';
+    for (let y = thisYear - 5; y <= thisYear + 1; y++) {
+      options += `<option value="${y}" ${y === currentYear ? 'selected' : ''}>${y}年</option>`;
+    }
+    return options;
+  }
+
+  // 生成周数选项
+  private generateWeekOptions(currentWeek: number): string {
+    let options = '';
+    for (let w = 1; w <= 53; w++) {
+      options += `<option value="${w}" ${w === currentWeek ? 'selected' : ''}>第${w}周</option>`;
+    }
+    return options;
+  }
+
+  // 生成月份选项
+  private generateMonthOptions(currentMonth: number): string {
+    const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+    let options = '';
+    for (let m = 1; m <= 12; m++) {
+      options += `<option value="${m}" ${m === currentMonth ? 'selected' : ''}>${monthNames[m - 1]}</option>`;
+    }
+    return options;
+  }
+
+  // 计算周偏移量（从年份和周数）
+  private calculateWeekOffset(year: number, weekNum: number): number {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    
+    // 获取当前周数
+    const oneJan = new Date(currentYear, 0, 1);
+    const days = Math.floor((now.getTime() - oneJan.getTime()) / 86400000);
+    const currentWeekNum = Math.ceil((days + oneJan.getDay() + 1) / 7);
+    
+    // 计算目标周与当前周的差值
+    const weeksDiff = (year - currentYear) * 52 + (weekNum - currentWeekNum);
+    return weeksDiff;
+  }
+
+  // 从选择器跳转到指定周
+  public jumpToWeekFromSelect(): void {
+    const yearSelect = document.getElementById('weekYearSelect') as HTMLSelectElement;
+    const weekSelect = document.getElementById('weekNumSelect') as HTMLSelectElement;
+    if (yearSelect && weekSelect) {
+      const year = parseInt(yearSelect.value);
+      const weekNum = parseInt(weekSelect.value);
+      this.viewingWeekOffset = this.calculateWeekOffset(year, weekNum);
+      this.render();
+    }
+  }
+
+  // 计算月偏移量
+  private calculateMonthOffset(year: number, month: number): number {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    return (year - currentYear) * 12 + (month - currentMonth);
+  }
+
+  // 从选择器跳转到指定月
+  public jumpToMonthFromSelect(): void {
+    const yearSelect = document.getElementById('monthYearSelect') as HTMLSelectElement;
+    const monthSelect = document.getElementById('monthNumSelect') as HTMLSelectElement;
+    if (yearSelect && monthSelect) {
+      const year = parseInt(yearSelect.value);
+      const month = parseInt(monthSelect.value);
+      this.viewingMonthOffset = this.calculateMonthOffset(year, month);
+      this.render();
+    }
+  }
+
+  // 从选择器跳转到指定年
+  public jumpToYearFromSelect(): void {
+    const yearSelect = document.getElementById('yearSelect') as HTMLSelectElement;
+    if (yearSelect) {
+      const year = parseInt(yearSelect.value);
+      this.viewingYearOffset = year - new Date().getFullYear();
+      this.render();
+    }
+  }
+
   // 加载主题设置
   private loadTheme(): BackgroundTheme {
     const saved = localStorage.getItem('dailyPlannerTheme');
@@ -4554,7 +4640,7 @@ class DailyPlanner {
              onclick="event.stopPropagation()">
           
           <!-- 标题与导航 -->
-          <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2">
               <!-- 左箭头 -->
               <button onclick="planner.navigateWeeklySummary(-1)"
@@ -4581,6 +4667,19 @@ class DailyPlanner {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
               </svg>
             </button>
+          </div>
+          
+          <!-- 周期选择器 -->
+          <div class="flex items-center gap-2 mb-4 p-2 ${isDark ? 'bg-gray-700' : 'bg-gray-100'} rounded-lg">
+            <label class="text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}">跳转到:</label>
+            <select id="weekYearSelect" onchange="planner.jumpToWeekFromSelect()"
+                    class="flex-1 px-2 py-1 text-sm rounded border ${isDark ? 'bg-gray-600 border-gray-500 text-gray-100' : 'bg-white border-gray-300 text-gray-800'}">
+              ${this.generateYearOptions(weekInfo.year)}
+            </select>
+            <select id="weekNumSelect" onchange="planner.jumpToWeekFromSelect()"
+                    class="flex-1 px-2 py-1 text-sm rounded border ${isDark ? 'bg-gray-600 border-gray-500 text-gray-100' : 'bg-white border-gray-300 text-gray-800'}">
+              ${this.generateWeekOptions(weekInfo.weekNum)}
+            </select>
           </div>
           
           <!-- 核心数据区 -->
@@ -4765,7 +4864,7 @@ class DailyPlanner {
              onclick="event.stopPropagation()">
           
           <!-- 标题与导航 -->
-          <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2">
               <!-- 左箭头 -->
               <button onclick="planner.navigateMonthlySummary(-1)"
@@ -4792,6 +4891,19 @@ class DailyPlanner {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
               </svg>
             </button>
+          </div>
+          
+          <!-- 月份选择器 -->
+          <div class="flex items-center gap-2 mb-4 p-2 ${isDark ? 'bg-gray-700' : 'bg-gray-100'} rounded-lg">
+            <label class="text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}">跳转到:</label>
+            <select id="monthYearSelect" onchange="planner.jumpToMonthFromSelect()"
+                    class="flex-1 px-2 py-1 text-sm rounded border ${isDark ? 'bg-gray-600 border-gray-500 text-gray-100' : 'bg-white border-gray-300 text-gray-800'}">
+              ${this.generateYearOptions(year)}
+            </select>
+            <select id="monthNumSelect" onchange="planner.jumpToMonthFromSelect()"
+                    class="flex-1 px-2 py-1 text-sm rounded border ${isDark ? 'bg-gray-600 border-gray-500 text-gray-100' : 'bg-white border-gray-300 text-gray-800'}">
+              ${this.generateMonthOptions(monthInfo.month)}
+            </select>
           </div>
           
           <!-- 核心数据区 -->
@@ -4975,7 +5087,7 @@ class DailyPlanner {
              onclick="event.stopPropagation()">
           
           <!-- 标题与导航 -->
-          <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2">
               <!-- 左箭头 -->
               <button onclick="planner.navigateYearlySummary(-1)"
@@ -5002,6 +5114,15 @@ class DailyPlanner {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
               </svg>
             </button>
+          </div>
+          
+          <!-- 年份选择器 -->
+          <div class="flex items-center gap-2 mb-4 p-2 ${isDark ? 'bg-gray-700' : 'bg-gray-100'} rounded-lg">
+            <label class="text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}">跳转到:</label>
+            <select id="yearSelect" onchange="planner.jumpToYearFromSelect()"
+                    class="flex-1 px-2 py-1 text-sm rounded border ${isDark ? 'bg-gray-600 border-gray-500 text-gray-100' : 'bg-white border-gray-300 text-gray-800'}">
+              ${this.generateYearOptions(currentYear)}
+            </select>
           </div>
 
           <!-- 核心数据区 -->
