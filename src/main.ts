@@ -337,6 +337,7 @@ class DailyPlanner {
   private knowledgeGuides: KnowledgeGuide[] = [];  // 所有指南
   private currentGuide: KnowledgeGuide | null = null;  // 当前编辑的指南
   private editingGuideId: string = '';  // 正在编辑的指南ID
+  private knowledgeSearchKeyword: string = '';  // 知识库搜索关键词
   
   // 提醒配置
   private reminderConfig = {
@@ -2120,8 +2121,80 @@ class DailyPlanner {
     this.showKnowledgeBase = false;
     this.currentGuide = null;
     this.editingGuideId = '';
+    this.knowledgeSearchKeyword = '';  // 清除搜索关键词
     // 注意：不恢复 selectedDate，因为用户已经主动关闭了知识库
     this.render();
+  }
+  
+  // 搜索知识库
+  public searchKnowledgeGuides(keyword: string): void {
+    this.knowledgeSearchKeyword = keyword;
+    this.render();
+  }
+  
+  // 清除搜索
+  public clearKnowledgeSearch(): void {
+    this.knowledgeSearchKeyword = '';
+    this.render();
+  }
+  
+  // 获取过滤后的指南列表
+  private getFilteredKnowledgeGuides(): KnowledgeGuide[] {
+    const keyword = this.knowledgeSearchKeyword.trim().toLowerCase();
+    if (!keyword) {
+      return this.knowledgeGuides;
+    }
+    
+    return this.knowledgeGuides.filter(guide => {
+      // 匹配标题
+      if (guide.name.toLowerCase().includes(keyword)) {
+        return true;
+      }
+      // 匹配步骤标题或内容
+      return guide.steps.some(step => 
+        (step.title && step.title.toLowerCase().includes(keyword)) ||
+        (step.content && step.content.toLowerCase().includes(keyword))
+      );
+    });
+  }
+  
+  // 获取指南匹配信息（显示匹配的内容摘要）
+  private getGuideMatchInfo(guide: KnowledgeGuide): string | null {
+    const keyword = this.knowledgeSearchKeyword.trim().toLowerCase();
+    if (!keyword) {
+      return null;
+    }
+    
+    // 如果标题匹配，不需要显示额外信息
+    if (guide.name.toLowerCase().includes(keyword)) {
+      return null;
+    }
+    
+    // 查找匹配的步骤
+    const matchedSteps = guide.steps.filter(step => 
+      (step.title && step.title.toLowerCase().includes(keyword)) ||
+      (step.content && step.content.toLowerCase().includes(keyword))
+    );
+    
+    if (matchedSteps.length === 0) {
+      return null;
+    }
+    
+    // 返回第一个匹配的步骤信息
+    const step = matchedSteps[0];
+    const matchText = step.title || step.content || '';
+    const truncatedText = matchText.length > 50 ? matchText.substring(0, 50) + '...' : matchText;
+    return `匹配：${truncatedText}`;
+  }
+  
+  // 高亮关键词
+  private highlightKeyword(text: string, keyword: string): string {
+    if (!keyword.trim()) {
+      return text;
+    }
+    
+    const regex = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-600 px-0.5 rounded">$1</mark>');
   }
 
   // 获取周标识（如 "2024-W01"），支持偏移量
@@ -5339,6 +5412,7 @@ class DailyPlanner {
   // 打开知识库（关闭其他面板）
   public openKnowledgeBase(): void {
     this.showKnowledgeBase = true;
+    this.knowledgeSearchKeyword = '';  // 清除搜索关键词
     // 关闭任务面板并清除选中日期
     this.showTaskPanel = false;
     this.selectedDate = null;
@@ -5451,6 +5525,28 @@ class DailyPlanner {
             </div>
           </div>
           
+          <!-- 搜索框 -->
+          <div class="mb-4">
+            <div class="relative">
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+              <input type="text" 
+                     placeholder="搜索指南标题或步骤内容..." 
+                     value="${this.knowledgeSearchKeyword}"
+                     oninput="planner.searchKnowledgeGuides(this.value)"
+                     class="w-full pl-10 pr-10 py-2.5 ${inputBg} border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+              ${this.knowledgeSearchKeyword ? `
+                <button onclick="planner.clearKnowledgeSearch()"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors">
+                  <svg class="w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              ` : ''}
+            </div>
+          </div>
+          
           <!-- 新建指南按钮 -->
           <button onclick="planner.createNewGuide()"
                   class="w-full mb-4 p-4 border-2 border-dashed ${isDark ? 'border-gray-600 hover:border-purple-500 hover:bg-gray-700' : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'} rounded-xl transition-all flex items-center justify-center gap-2">
@@ -5461,41 +5557,74 @@ class DailyPlanner {
           </button>
           
           <!-- 指南列表 -->
-          ${this.knowledgeGuides.length === 0 ? `
-            <div class="text-center py-12">
-              <div class="text-6xl mb-4">📖</div>
-              <p class="${isDark ? 'text-gray-400' : 'text-gray-500'}">还没有任何指南</p>
-              <p class="text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'} mt-2">点击上方按钮创建你的第一个指南，或导入已有知识库</p>
-            </div>
-          ` : `
-            <div class="space-y-3">
-              ${this.knowledgeGuides.map(guide => `
-                <div class="p-4 ${isDark ? 'bg-gray-700 hover:bg-gray-650' : 'bg-gray-50 hover:bg-gray-100'} rounded-xl transition-all cursor-pointer group"
-                     onclick="planner.openGuideEdit('${guide.id}')">
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                      <span class="text-2xl">📋</span>
-                      <div>
-                        <h3 class="font-medium ${textClass}">${guide.name}</h3>
-                        <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${guide.steps.length} 个步骤 · 更新于 ${new Date(guide.updatedAt).toLocaleDateString()}</p>
+          ${(() => {
+            const filteredGuides = this.getFilteredKnowledgeGuides();
+            const hasKeyword = this.knowledgeSearchKeyword.trim().length > 0;
+            
+            if (this.knowledgeGuides.length === 0) {
+              return `
+                <div class="text-center py-12">
+                  <div class="text-6xl mb-4">📖</div>
+                  <p class="${isDark ? 'text-gray-400' : 'text-gray-500'}">还没有任何指南</p>
+                  <p class="text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'} mt-2">点击上方按钮创建你的第一个指南，或导入已有知识库</p>
+                </div>
+              `;
+            }
+            
+            if (hasKeyword && filteredGuides.length === 0) {
+              return `
+                <div class="text-center py-12">
+                  <div class="text-6xl mb-4">🔍</div>
+                  <p class="${isDark ? 'text-gray-400' : 'text-gray-500'}">没有找到匹配的内容</p>
+                  <p class="text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'} mt-2">尝试其他关键词</p>
+                </div>
+              `;
+            }
+            
+            return `
+              ${hasKeyword ? `
+                <div class="mb-3 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">
+                  找到 ${filteredGuides.length} 个匹配的指南
+                </div>
+              ` : ''}
+              <div class="space-y-3">
+                ${filteredGuides.map(guide => {
+                  // 获取匹配的内容摘要
+                  const matchInfo = this.getGuideMatchInfo(guide);
+                  return `
+                    <div class="p-4 ${isDark ? 'bg-gray-700 hover:bg-gray-650' : 'bg-gray-50 hover:bg-gray-100'} rounded-xl transition-all cursor-pointer group"
+                         onclick="planner.openGuideEdit('${guide.id}')">
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                          <span class="text-2xl flex-shrink-0">📋</span>
+                          <div class="flex-1 min-w-0">
+                            <h3 class="font-medium ${textClass} truncate">${this.highlightKeyword(guide.name, this.knowledgeSearchKeyword)}</h3>
+                            <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${guide.steps.length} 个步骤 · 更新于 ${new Date(guide.updatedAt).toLocaleDateString()}</p>
+                            ${matchInfo ? `
+                              <p class="text-xs ${isDark ? 'text-purple-400' : 'text-purple-600'} mt-1 truncate">
+                                ${matchInfo}
+                              </p>
+                            ` : ''}
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                          <button onclick="event.stopPropagation(); planner.deleteGuide('${guide.id}')"
+                                  class="p-2 opacity-0 group-hover:opacity-100 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-all">
+                            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                          </button>
+                          <svg class="w-5 h-5 ${isDark ? 'text-gray-500' : 'text-gray-400'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                          </svg>
+                        </div>
                       </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                      <button onclick="event.stopPropagation(); planner.deleteGuide('${guide.id}')"
-                              class="p-2 opacity-0 group-hover:opacity-100 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-all">
-                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                        </svg>
-                      </button>
-                      <svg class="w-5 h-5 ${isDark ? 'text-gray-500' : 'text-gray-400'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-          `}
+                  `;
+                }).join('')}
+              </div>
+            `;
+          })()}
         </div>
       </div>
       ${this.generateEnlargedImageHTML()}
