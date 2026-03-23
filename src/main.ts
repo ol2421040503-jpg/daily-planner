@@ -61,7 +61,7 @@ declare global {
 }
 
 // ==================== 版本配置 ====================
-const APP_VERSION = '1.2.5';
+const APP_VERSION = '1.4.0';
 const VERSION_CHECK_URL = 'https://your-server.com/api/version'; // 替换为你的版本检查API
 const RELEASE_NOTES: Record<string, string[]> = {
   '1.0.0': [
@@ -238,6 +238,32 @@ interface MonthlyStats {
   percentage: number;
 }
 
+// 周统计数据
+interface WeeklyStats {
+  total: number;
+  completed: number;
+  pending: number;
+  percentage: number;
+  byDay: { date: string; dayName: string; total: number; completed: number }[];
+  lastWeekPercentage: number;
+  improvement: number; // 较上周提升百分比
+  streakDays: number; // 连续打卡天数
+}
+
+// 年度统计数据扩展
+interface YearlyStatsExtended {
+  total: number;
+  completed: number;
+  pending: number;
+  percentage: number;
+  byMonth: { month: number; total: number; completed: number; percentage: number }[];
+  busiestMonth: { month: number; count: number } | null;
+  mostProductiveMonth: { month: number; rate: number } | null;
+  streakDays: number;
+  longestStreak: number;
+  avgDailyTasks: number;
+}
+
 type MonthlyFilter = 'all' | 'completed' | 'pending';
 
 // 视图模式类型
@@ -282,6 +308,8 @@ class DailyPlanner {
   private monthlyFilter: MonthlyFilter;
   private showStatsModal: boolean;
   private showYearlyStats: boolean = false;  // 是否显示年度统计
+  private showWeeklySummary: boolean = false;  // 是否显示周总结
+  private showMonthlySummary: boolean = false;  // 是否显示月总结
   private showQuadrantView: boolean = false;  // 是否显示四象限视图
   private quadrantFilter: 'year' | 'month' | 'custom' = 'month';  // 四象限时间筛选
   private quadrantStartDate: string = '';  // 自定义开始日期
@@ -2048,6 +2076,204 @@ class DailyPlanner {
     }
 
     return { total, completed, byMonth };
+  }
+
+  // 获取周统计数据（详细版）
+  private getWeeklyStats(): WeeklyStats {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const adjustedDayOfWeek = (dayOfWeek + 6) % 7; // 周一为第一天
+    
+    // 本周开始日期（周一）
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - adjustedDayOfWeek);
+    
+    const dayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    const byDay: { date: string; dayName: string; total: number; completed: number }[] = [];
+    
+    let total = 0;
+    let completed = 0;
+    
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(weekStart);
+      date.setDate(weekStart.getDate() + i);
+      const dateKey = this.formatDate(date);
+      const dayTasks = this.tasks[dateKey] || [];
+      
+      const dayTotal = dayTasks.length;
+      const dayCompleted = dayTasks.filter(t => t.completed).length;
+      
+      byDay.push({
+        date: dateKey,
+        dayName: dayNames[i],
+        total: dayTotal,
+        completed: dayCompleted
+      });
+      
+      total += dayTotal;
+      completed += dayCompleted;
+    }
+    
+    const pending = total - completed;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+    
+    // 计算上周数据
+    const lastWeekStart = new Date(weekStart);
+    lastWeekStart.setDate(weekStart.getDate() - 7);
+    
+    let lastWeekTotal = 0;
+    let lastWeekCompleted = 0;
+    
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(lastWeekStart);
+      date.setDate(lastWeekStart.getDate() + i);
+      const dateKey = this.formatDate(date);
+      const dayTasks = this.tasks[dateKey] || [];
+      lastWeekTotal += dayTasks.length;
+      lastWeekCompleted += dayTasks.filter(t => t.completed).length;
+    }
+    
+    const lastWeekPercentage = lastWeekTotal > 0 ? Math.round((lastWeekCompleted / lastWeekTotal) * 100) : 0;
+    const improvement = percentage - lastWeekPercentage;
+    
+    // 连续打卡天数
+    const streakDays = this.getStreakDays();
+    
+    return {
+      total,
+      completed,
+      pending,
+      percentage,
+      byDay,
+      lastWeekPercentage,
+      improvement,
+      streakDays
+    };
+  }
+
+  // 获取连续打卡天数
+  private getStreakDays(): number {
+    const today = this.formatDate(new Date());
+    let streak = 0;
+    let checkDate = new Date();
+    
+    // 从今天开始往前检查
+    while (true) {
+      const dateKey = this.formatDate(checkDate);
+      const dayTasks = this.tasks[dateKey] || [];
+      const hasCompletedTask = dayTasks.some(t => t.completed);
+      
+      if (hasCompletedTask) {
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else if (dateKey === today) {
+        // 今天还没完成任务，继续检查昨天
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    
+    return streak;
+  }
+
+  // 获取最长连续打卡天数
+  private getLongestStreak(): number {
+    const allDates = Object.keys(this.tasks).sort();
+    if (allDates.length === 0) return 0;
+    
+    let longestStreak = 0;
+    let currentStreak = 0;
+    let prevDate: Date | null = null;
+    
+    for (const dateKey of allDates) {
+      const dayTasks = this.tasks[dateKey] || [];
+      const hasCompletedTask = dayTasks.some(t => t.completed);
+      
+      if (hasCompletedTask) {
+        const currentDate = new Date(dateKey);
+        
+        if (prevDate) {
+          const diffDays = Math.floor((currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
+          if (diffDays === 1) {
+            currentStreak++;
+          } else {
+            currentStreak = 1;
+          }
+        } else {
+          currentStreak = 1;
+        }
+        
+        prevDate = currentDate;
+        longestStreak = Math.max(longestStreak, currentStreak);
+      }
+    }
+    
+    return longestStreak;
+  }
+
+  // 获取扩展的年度统计
+  private getYearlyStatsExtended(): YearlyStatsExtended {
+    const year = this.currentDate.getFullYear();
+    let total = 0;
+    let completed = 0;
+    let totalDays = 0;
+    let daysWithTasks = 0;
+    
+    const byMonth: { month: number; total: number; completed: number; percentage: number }[] = [];
+    let busiestMonth: { month: number; count: number } | null = null;
+    let mostProductiveMonth: { month: number; rate: number } | null = null;
+    
+    for (let month = 0; month < 12; month++) {
+      let monthTotal = 0;
+      let monthCompleted = 0;
+      const lastDay = new Date(year, month + 1, 0).getDate();
+      
+      for (let day = 1; day <= lastDay; day++) {
+        const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayTasks = this.tasks[dateKey] || [];
+        monthTotal += dayTasks.length;
+        monthCompleted += dayTasks.filter(t => t.completed).length;
+        
+        if (dayTasks.length > 0) {
+          daysWithTasks++;
+        }
+        totalDays++;
+      }
+      
+      const monthPercentage = monthTotal > 0 ? Math.round((monthCompleted / monthTotal) * 100) : 0;
+      byMonth.push({ month: month + 1, total: monthTotal, completed: monthCompleted, percentage: monthPercentage });
+      
+      total += monthTotal;
+      completed += monthCompleted;
+      
+      // 更新最忙碌月份
+      if (!busiestMonth || monthTotal > busiestMonth.count) {
+        busiestMonth = { month: month + 1, count: monthTotal };
+      }
+      
+      // 更新最高效月份（至少有5个任务才计入）
+      if (monthTotal >= 5 && (!mostProductiveMonth || monthPercentage > mostProductiveMonth.rate)) {
+        mostProductiveMonth = { month: month + 1, rate: monthPercentage };
+      }
+    }
+    
+    const pending = total - completed;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const avgDailyTasks = daysWithTasks > 0 ? Math.round(total / daysWithTasks * 10) / 10 : 0;
+    
+    return {
+      total,
+      completed,
+      pending,
+      percentage,
+      byMonth,
+      busiestMonth,
+      mostProductiveMonth,
+      streakDays: this.getStreakDays(),
+      longestStreak: this.getLongestStreak(),
+      avgDailyTasks
+    };
   }
 
   // 添加纪念日
@@ -3918,12 +4144,26 @@ class DailyPlanner {
     return `
       <div class="fixed inset-0 z-40" onclick="planner.toggleMoreMenu()">
         <div class="absolute right-4 top-20 ${bgClass} rounded-lg shadow-xl border py-2 min-w-[200px]" onclick="event.stopPropagation()">
+          <button onclick="planner.showWeeklySummary = true; planner.showMoreMenu = false; planner.render();"
+                  class="flex items-center gap-2 px-4 py-2 w-full ${textClass} ${hoverClass} transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            周总结
+          </button>
+          <button onclick="planner.showMonthlySummary = true; planner.showMoreMenu = false; planner.render();"
+                  class="flex items-center gap-2 px-4 py-2 w-full ${textClass} ${hoverClass} transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            月总结
+          </button>
           <button onclick="planner.showYearlyStats = true; planner.showMoreMenu = false; planner.render();"
                   class="flex items-center gap-2 px-4 py-2 w-full ${textClass} ${hoverClass} transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
             </svg>
-            年度统计
+            年度总结
           </button>
           <button onclick="planner.showAnniversaryModal = true; planner.showMoreMenu = false; planner.render();"
                   class="flex items-center gap-2 px-4 py-2 w-full ${textClass} ${hoverClass} transition-colors">
@@ -4174,23 +4414,397 @@ class DailyPlanner {
   }
 
   // 生成年度统计弹窗
+  // 生成周总结弹窗 HTML
+  private generateWeeklySummaryHTML(): string {
+    if (!this.showWeeklySummary) return '';
+    
+    const isDark = this.themeMode === 'dark';
+    const bgClass = isDark ? 'bg-gray-800' : 'bg-white';
+    const textClass = isDark ? 'text-gray-100' : 'text-gray-800';
+    const stats = this.getWeeklyStats();
+    
+    const circumference = 2 * Math.PI * 60;
+    const offset = circumference - (stats.percentage / 100) * circumference;
+    
+    // 计算每日最大任务数用于柱状图
+    const maxDailyTasks = Math.max(...stats.byDay.map(d => d.total), 1);
+    
+    // 激励文案
+    const getMotivationText = () => {
+      if (stats.percentage >= 90) return { text: '🎉 本周表现卓越！你是个效率达人！', emoji: '🏆' };
+      if (stats.percentage >= 70) return { text: '👏 本周表现优秀！继续保持！', emoji: '💪' };
+      if (stats.percentage >= 50) return { text: '💪 本周表现良好，还有提升空间！', emoji: '📈' };
+      return { text: '🚀 下周加油！相信你可以做得更好！', emoji: '⭐' };
+    };
+    const motivation = getMotivationText();
+    
+    return `
+      <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
+           onclick="planner.showWeeklySummary = false; planner.render();">
+        <div class="${bgClass} rounded-2xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+             onclick="event.stopPropagation()">
+          
+          <!-- 标题 -->
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-xl font-bold ${textClass}">📊 本周总结</h2>
+              <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${stats.byDay[0].date} ~ ${stats.byDay[6].date}</p>
+            </div>
+            <button onclick="planner.showWeeklySummary = false; planner.render();"
+                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+              <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          
+          <!-- 核心数据区 -->
+          <div class="flex items-center gap-6 mb-6">
+            <!-- 环形进度条 -->
+            <div class="relative flex-shrink-0">
+              <svg width="140" height="140" class="transform -rotate-90">
+                <circle cx="70" cy="70" r="60" stroke="${isDark ? '#374151' : '#e5e7eb'}" stroke-width="10" fill="none"/>
+                <circle cx="70" cy="70" r="60" stroke="url(#gradient)" stroke-width="10" fill="none"
+                        stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
+                        class="transition-all duration-700 ease-in-out"/>
+                <defs>
+                  <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#10b981"/>
+                    <stop offset="100%" style="stop-color:#3b82f6"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span class="text-3xl font-bold ${textClass}">${stats.percentage}%</span>
+                <span class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">完成率</span>
+              </div>
+            </div>
+            
+            <!-- 统计卡片 -->
+            <div class="flex-1 grid grid-cols-2 gap-3">
+              <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl p-3 text-center">
+                <div class="text-2xl font-bold text-blue-600">${stats.total}</div>
+                <div class="text-xs text-gray-600 dark:text-gray-400">总任务</div>
+              </div>
+              <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 rounded-xl p-3 text-center">
+                <div class="text-2xl font-bold text-green-600">${stats.completed}</div>
+                <div class="text-xs text-gray-600 dark:text-gray-400">已完成</div>
+              </div>
+              <div class="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30 rounded-xl p-3 text-center">
+                <div class="text-2xl font-bold text-orange-600">${stats.pending}</div>
+                <div class="text-xs text-gray-600 dark:text-gray-400">未完成</div>
+              </div>
+              <div class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 rounded-xl p-3 text-center">
+                <div class="text-2xl font-bold text-purple-600">${stats.streakDays}</div>
+                <div class="text-xs text-gray-600 dark:text-gray-400">连续打卡</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 每日趋势柱状图 -->
+          <div class="mb-6">
+            <h3 class="text-sm font-semibold ${textClass} mb-3">📅 每日完成趋势</h3>
+            <div class="flex items-end justify-between gap-2 h-24 px-2">
+              ${stats.byDay.map(day => {
+                const height = day.total > 0 ? Math.max((day.completed / maxDailyTasks) * 100, 8) : 8;
+                const isToday = day.date === this.formatDate(new Date());
+                return `
+                  <div class="flex flex-col items-center flex-1">
+                    <div class="w-full flex flex-col items-center justify-end h-20">
+                      <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mb-1">${day.completed}/${day.total}</div>
+                      <div class="w-full max-w-[30px] rounded-t-md transition-all duration-300 ${isToday ? 'bg-gradient-to-t from-blue-500 to-blue-400' : 'bg-gradient-to-t from-green-500 to-green-400'}"
+                           style="height: ${height}%"></div>
+                    </div>
+                    <span class="text-xs mt-1 ${isToday ? 'font-bold text-blue-500' : isDark ? 'text-gray-400' : 'text-gray-500'}">${day.dayName}</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+          
+          <!-- 对比上周 -->
+          <div class="mb-4 p-3 rounded-xl ${isDark ? 'bg-gray-700/50' : 'bg-gray-50'}">
+            <div class="flex items-center justify-between">
+              <span class="text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}">📈 较上周对比</span>
+              <span class="font-bold ${stats.improvement >= 0 ? 'text-green-500' : 'text-red-500'}">
+                ${stats.improvement >= 0 ? '+' : ''}${stats.improvement}%
+              </span>
+            </div>
+            <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-1">
+              上周完成率: ${stats.lastWeekPercentage}%
+            </div>
+          </div>
+          
+          <!-- 激励文案 -->
+          <div class="p-4 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 text-white text-center">
+            <div class="text-2xl mb-1">${motivation.emoji}</div>
+            <div class="font-medium">${motivation.text}</div>
+          </div>
+          
+          <!-- 成就徽章 -->
+          ${stats.streakDays >= 7 ? `
+            <div class="mt-4 flex items-center justify-center gap-2">
+              <span class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-medium">🔥 坚持一周</span>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  // 生成月总结弹窗 HTML
+  private generateMonthlySummaryHTML(): string {
+    if (!this.showMonthlySummary) return '';
+    
+    const isDark = this.themeMode === 'dark';
+    const bgClass = isDark ? 'bg-gray-800' : 'bg-white';
+    const textClass = isDark ? 'text-gray-100' : 'text-gray-800';
+    
+    const year = this.currentDate.getFullYear();
+    const month = this.currentDate.getMonth();
+    const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+    
+    // 统计本月数据
+    let total = 0;
+    let completed = 0;
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const dailyData: { day: number; total: number; completed: number }[] = [];
+    
+    for (let day = 1; day <= lastDay; day++) {
+      const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const dayTasks = this.tasks[dateKey] || [];
+      const dayTotal = dayTasks.length;
+      const dayCompleted = dayTasks.filter(t => t.completed).length;
+      
+      dailyData.push({ day, total: dayTotal, completed: dayCompleted });
+      total += dayTotal;
+      completed += dayCompleted;
+    }
+    
+    const pending = total - completed;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+    
+    // 计算上月数据
+    const lastMonth = month === 0 ? 11 : month - 1;
+    const lastMonthYear = month === 0 ? year - 1 : year;
+    let lastMonthTotal = 0;
+    let lastMonthCompleted = 0;
+    const lastMonthLastDay = new Date(lastMonthYear, lastMonth + 1, 0).getDate();
+    
+    for (let day = 1; day <= lastMonthLastDay; day++) {
+      const dateKey = `${lastMonthYear}-${String(lastMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const dayTasks = this.tasks[dateKey] || [];
+      lastMonthTotal += dayTasks.length;
+      lastMonthCompleted += dayTasks.filter(t => t.completed).length;
+    }
+    
+    const lastMonthPercentage = lastMonthTotal > 0 ? Math.round((lastMonthCompleted / lastMonthTotal) * 100) : 0;
+    const improvement = percentage - lastMonthPercentage;
+    
+    const circumference = 2 * Math.PI * 60;
+    const offset = circumference - (percentage / 100) * circumference;
+    
+    // 日历热力图
+    const heatmapHTML = this.generateHeatmapHTML(year, month, dailyData, isDark);
+    
+    // 激励文案
+    const getMotivationText = () => {
+      if (percentage >= 90) return { text: '🏆 本月表现卓越！你是效率冠军！', color: 'from-yellow-400 to-orange-500' };
+      if (percentage >= 70) return { text: '👏 本月表现优秀！继续保持！', color: 'from-green-400 to-blue-500' };
+      if (percentage >= 50) return { text: '💪 本月表现良好，下月继续加油！', color: 'from-blue-400 to-purple-500' };
+      return { text: '🚀 下个月，你一定可以做得更好！', color: 'from-purple-400 to-pink-500' };
+    };
+    const motivation = getMotivationText();
+    
+    return `
+      <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
+           onclick="planner.showMonthlySummary = false; planner.render();">
+        <div class="${bgClass} rounded-2xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+             onclick="event.stopPropagation()">
+          
+          <!-- 标题 -->
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-xl font-bold ${textClass}">📊 ${monthNames[month]}总结</h2>
+              <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${year}年</p>
+            </div>
+            <button onclick="planner.showMonthlySummary = false; planner.render();"
+                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+              <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          
+          <!-- 核心数据区 -->
+          <div class="flex items-center gap-6 mb-6">
+            <!-- 环形进度条 -->
+            <div class="relative flex-shrink-0">
+              <svg width="140" height="140" class="transform -rotate-90">
+                <circle cx="70" cy="70" r="60" stroke="${isDark ? '#374151' : '#e5e7eb'}" stroke-width="10" fill="none"/>
+                <circle cx="70" cy="70" r="60" stroke="url(#gradientMonth)" stroke-width="10" fill="none"
+                        stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
+                        class="transition-all duration-700 ease-in-out"/>
+                <defs>
+                  <linearGradient id="gradientMonth" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#8b5cf6"/>
+                    <stop offset="100%" style="stop-color:#3b82f6"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span class="text-3xl font-bold ${textClass}">${percentage}%</span>
+                <span class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">完成率</span>
+              </div>
+            </div>
+            
+            <!-- 统计卡片 -->
+            <div class="flex-1 grid grid-cols-2 gap-3">
+              <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl p-3 text-center">
+                <div class="text-2xl font-bold text-blue-600">${total}</div>
+                <div class="text-xs text-gray-600 dark:text-gray-400">总任务</div>
+              </div>
+              <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 rounded-xl p-3 text-center">
+                <div class="text-2xl font-bold text-green-600">${completed}</div>
+                <div class="text-xs text-gray-600 dark:text-gray-400">已完成</div>
+              </div>
+              <div class="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30 rounded-xl p-3 text-center">
+                <div class="text-2xl font-bold text-orange-600">${pending}</div>
+                <div class="text-xs text-gray-600 dark:text-gray-400">未完成</div>
+              </div>
+              <div class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 rounded-xl p-3 text-center">
+                <div class="text-2xl font-bold text-purple-600">${Math.round(total / lastDay * 10) / 10}</div>
+                <div class="text-xs text-gray-600 dark:text-gray-400">日均任务</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 日历热力图 -->
+          <div class="mb-6">
+            <h3 class="text-sm font-semibold ${textClass} mb-3">📅 任务日历</h3>
+            ${heatmapHTML}
+          </div>
+          
+          <!-- 对比上月 -->
+          <div class="mb-4 p-3 rounded-xl ${isDark ? 'bg-gray-700/50' : 'bg-gray-50'}">
+            <div class="flex items-center justify-between">
+              <span class="text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}">📈 较上月对比</span>
+              <span class="font-bold ${improvement >= 0 ? 'text-green-500' : 'text-red-500'}">
+                ${improvement >= 0 ? '+' : ''}${improvement}%
+              </span>
+            </div>
+            <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-1">
+              上月完成率: ${lastMonthPercentage}%
+            </div>
+          </div>
+          
+          <!-- 激励文案 -->
+          <div class="p-4 rounded-xl bg-gradient-to-r ${motivation.color} text-white text-center">
+            <div class="font-medium">${motivation.text}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // 生成日历热力图
+  private generateHeatmapHTML(year: number, month: number, dailyData: { day: number; total: number; completed: number }[], isDark: boolean): string {
+    const firstDay = new Date(year, month, 1).getDay();
+    const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1; // 周一为第一天
+    
+    const weekDays = ['一', '二', '三', '四', '五', '六', '日'];
+    
+    let html = `
+      <div class="grid grid-cols-7 gap-1 text-center mb-1">
+        ${weekDays.map(d => `<div class="text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}">${d}</div>`).join('')}
+      </div>
+      <div class="grid grid-cols-7 gap-1">
+    `;
+    
+    // 填充空白格
+    for (let i = 0; i < adjustedFirstDay; i++) {
+      html += `<div class="aspect-square"></div>`;
+    }
+    
+    // 填充日期
+    dailyData.forEach(({ day, total, completed }) => {
+      let bgColor = isDark ? 'bg-gray-700' : 'bg-gray-100';
+      if (total > 0) {
+        const rate = completed / total;
+        if (rate === 1) bgColor = 'bg-green-500';
+        else if (rate >= 0.7) bgColor = 'bg-green-400';
+        else if (rate >= 0.5) bgColor = 'bg-yellow-400';
+        else if (rate > 0) bgColor = 'bg-orange-400';
+      }
+      
+      const today = new Date();
+      const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+      
+      html += `
+        <div class="aspect-square rounded-sm ${bgColor} ${isToday ? 'ring-2 ring-blue-500' : ''} flex items-center justify-center text-xs ${total > 0 ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400'}"
+             title="${day}日: ${completed}/${total} 完成">
+          ${day}
+        </div>
+      `;
+    });
+    
+    html += `</div>`;
+    
+    // 图例
+    html += `
+      <div class="flex items-center justify-end gap-2 mt-2 text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">
+        <span>少</span>
+        <div class="flex gap-1">
+          <div class="w-3 h-3 rounded-sm ${isDark ? 'bg-gray-700' : 'bg-gray-200'}"></div>
+          <div class="w-3 h-3 rounded-sm bg-orange-400"></div>
+          <div class="w-3 h-3 rounded-sm bg-yellow-400"></div>
+          <div class="w-3 h-3 rounded-sm bg-green-400"></div>
+          <div class="w-3 h-3 rounded-sm bg-green-500"></div>
+        </div>
+        <span>多</span>
+      </div>
+    `;
+    
+    return html;
+  }
+
+  // 生成年度统计弹窗 HTML
   private generateYearlyStatsHTML(): string {
     if (!this.showYearlyStats) return '';
     const isDark = this.themeMode === 'dark';
     const bgClass = isDark ? 'bg-gray-800' : 'bg-white';
     const textClass = isDark ? 'text-gray-100' : 'text-gray-800';
-    const stats = this.getYearlyStats();
-    const percentage = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+    const stats = this.getYearlyStatsExtended();
 
     const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+    
+    const circumference = 2 * Math.PI * 70;
+    const offset = circumference - (stats.percentage / 100) * circumference;
+    
+    // 计算每月最大任务数用于柱状图
+    const maxMonthlyTasks = Math.max(...stats.byMonth.map(m => m.total), 1);
+    
+    // 激励文案
+    const getMotivationText = () => {
+      if (stats.percentage >= 80) return { text: `🏆 ${this.currentDate.getFullYear()}年，你完成了${stats.completed}个任务，效率爆表！`, badges: ['效率达人', '任务终结者'] };
+      if (stats.percentage >= 60) return { text: `👏 ${this.currentDate.getFullYear()}年，你完成了${stats.completed}个任务，表现出色！`, badges: ['坚持之星'] };
+      if (stats.percentage >= 40) return { text: `💪 ${this.currentDate.getFullYear()}年，你完成了${stats.completed}个任务，继续加油！`, badges: ['努力向前'] };
+      return { text: `🚀 ${this.currentDate.getFullYear()}年过去了，新的一年你一定可以做得更好！`, badges: ['新起点'] };
+    };
+    const motivation = getMotivationText();
 
     return `
       <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
            onclick="planner.showYearlyStats = false; planner.render();">
-        <div class="${bgClass} rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+        <div class="${bgClass} rounded-2xl shadow-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto"
              onclick="event.stopPropagation()">
+          
+          <!-- 标题 -->
           <div class="flex items-center justify-between mb-6">
-            <h2 class="text-xl font-bold ${textClass}">${this.currentDate.getFullYear()}年任务统计</h2>
+            <div>
+              <h2 class="text-2xl font-bold ${textClass}">🎊 ${this.currentDate.getFullYear()}年度总结</h2>
+              <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">回顾这一年，你做得很棒！</p>
+            </div>
             <button onclick="planner.showYearlyStats = false; planner.render();"
                     class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
               <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4199,32 +4813,124 @@ class DailyPlanner {
             </button>
           </div>
 
-          <div class="grid grid-cols-3 gap-4 mb-6">
-            <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-lg p-4 text-center">
-              <div class="text-2xl font-bold text-blue-600">${stats.total}</div>
-              <div class="text-xs text-gray-600 dark:text-gray-400">总任务数</div>
+          <!-- 核心数据区 -->
+          <div class="flex items-center gap-6 mb-6">
+            <!-- 环形进度条 -->
+            <div class="relative flex-shrink-0">
+              <svg width="160" height="160" class="transform -rotate-90">
+                <circle cx="80" cy="80" r="70" stroke="${isDark ? '#374151' : '#e5e7eb'}" stroke-width="12" fill="none"/>
+                <circle cx="80" cy="80" r="70" stroke="url(#gradientYear)" stroke-width="12" fill="none"
+                        stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
+                        class="transition-all duration-1000 ease-in-out"/>
+                <defs>
+                  <linearGradient id="gradientYear" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#f59e0b"/>
+                    <stop offset="50%" style="stop-color:#8b5cf6"/>
+                    <stop offset="100%" style="stop-color:#3b82f6"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span class="text-4xl font-bold ${textClass}">${stats.percentage}%</span>
+                <span class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">年度完成率</span>
+              </div>
             </div>
-            <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 rounded-lg p-4 text-center">
-              <div class="text-2xl font-bold text-green-600">${stats.completed}</div>
-              <div class="text-xs text-gray-600 dark:text-gray-400">已完成</div>
+            
+            <!-- 统计卡片 -->
+            <div class="flex-1 grid grid-cols-2 gap-3">
+              <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl p-4 text-center">
+                <div class="text-3xl font-bold text-blue-600">${stats.total.toLocaleString()}</div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">总任务数</div>
+              </div>
+              <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 rounded-xl p-4 text-center">
+                <div class="text-3xl font-bold text-green-600">${stats.completed.toLocaleString()}</div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">已完成</div>
+              </div>
+              <div class="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30 rounded-xl p-4 text-center">
+                <div class="text-3xl font-bold text-orange-600">${stats.pending.toLocaleString()}</div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">未完成</div>
+              </div>
+              <div class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 rounded-xl p-4 text-center">
+                <div class="text-3xl font-bold text-purple-600">${stats.avgDailyTasks}</div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">日均任务</div>
+              </div>
             </div>
-            <div class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 rounded-lg p-4 text-center">
-              <div class="text-2xl font-bold text-purple-600">${percentage}%</div>
-              <div class="text-xs text-gray-600 dark:text-gray-400">完成率</div>
+          </div>
+          
+          <!-- 亮点数据 -->
+          <div class="grid grid-cols-3 gap-3 mb-6">
+            <div class="p-3 rounded-xl ${isDark ? 'bg-gray-700/50' : 'bg-gray-50'} text-center">
+              <div class="text-lg font-bold text-red-500">${stats.busiestMonth ? monthNames[stats.busiestMonth.month - 1] : '-'}</div>
+              <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">最忙碌月份 ${stats.busiestMonth ? `(${stats.busiestMonth.count}任务)` : ''}</div>
+            </div>
+            <div class="p-3 rounded-xl ${isDark ? 'bg-gray-700/50' : 'bg-gray-50'} text-center">
+              <div class="text-lg font-bold text-green-500">${stats.mostProductiveMonth ? monthNames[stats.mostProductiveMonth.month - 1] : '-'}</div>
+              <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">最高效月份 ${stats.mostProductiveMonth ? `(${stats.mostProductiveMonth.rate}%)` : ''}</div>
+            </div>
+            <div class="p-3 rounded-xl ${isDark ? 'bg-gray-700/50' : 'bg-gray-50'} text-center">
+              <div class="text-lg font-bold text-yellow-500">${stats.longestStreak}天</div>
+              <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">最长连续打卡</div>
             </div>
           </div>
 
-          <div class="space-y-2">
-            ${stats.byMonth.map(m => `
-              <div class="flex items-center gap-3">
-                <span class="w-12 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${monthNames[m.month - 1]}</span>
-                <div class="flex-1 h-6 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden">
-                  <div class="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all"
-                       style="width: ${m.total > 0 ? (m.completed / m.total * 100) : 0}%"></div>
+          <!-- 月度趋势柱状图 -->
+          <div class="mb-6">
+            <h3 class="text-sm font-semibold ${textClass} mb-3">📊 月度任务趋势</h3>
+            <div class="flex items-end justify-between gap-2 h-32 px-2">
+              ${stats.byMonth.map(m => {
+                const height = m.total > 0 ? Math.max((m.total / maxMonthlyTasks) * 100, 5) : 5;
+                const rate = m.percentage;
+                let barColor = 'from-gray-400 to-gray-500';
+                if (rate >= 80) barColor = 'from-green-400 to-green-500';
+                else if (rate >= 50) barColor = 'from-yellow-400 to-yellow-500';
+                else if (rate >= 30) barColor = 'from-orange-400 to-orange-500';
+                return `
+                  <div class="flex flex-col items-center flex-1">
+                    <div class="w-full flex flex-col items-center justify-end h-28">
+                      <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mb-1">${m.total}</div>
+                      <div class="w-full max-w-[35px] rounded-t-md transition-all duration-300 bg-gradient-to-t ${barColor}"
+                           style="height: ${height}%"></div>
+                    </div>
+                    <span class="text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}">${m.month}月</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+
+          <!-- 月度详情 -->
+          <div class="mb-6">
+            <h3 class="text-sm font-semibold ${textClass} mb-3">📅 月度详情</h3>
+            <div class="space-y-2">
+              ${stats.byMonth.map(m => `
+                <div class="flex items-center gap-3">
+                  <span class="w-12 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${monthNames[m.month - 1]}</span>
+                  <div class="flex-1 h-5 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all"
+                         style="width: ${m.percentage}%"></div>
+                  </div>
+                  <span class="w-16 text-sm text-right ${isDark ? 'text-gray-300' : 'text-gray-600'}">${m.completed}/${m.total}</span>
+                  <span class="w-12 text-xs text-right ${m.percentage >= 70 ? 'text-green-500' : m.percentage >= 50 ? 'text-yellow-500' : 'text-red-500'}">${m.percentage}%</span>
                 </div>
-                <span class="w-20 text-sm text-right ${isDark ? 'text-gray-300' : 'text-gray-600'}">${m.completed}/${m.total}</span>
-              </div>
+              `).join('')}
+            </div>
+          </div>
+          
+          <!-- 激励文案 -->
+          <div class="p-4 rounded-xl bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 text-white text-center mb-4">
+            <div class="text-lg font-medium">${motivation.text}</div>
+          </div>
+          
+          <!-- 成就徽章 -->
+          <div class="flex items-center justify-center gap-2 flex-wrap">
+            ${motivation.badges.map(badge => `
+              <span class="px-3 py-1.5 bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 rounded-full text-sm font-medium shadow-sm">
+                🏅 ${badge}
+              </span>
             `).join('')}
+            ${stats.longestStreak >= 30 ? `<span class="px-3 py-1.5 bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 rounded-full text-sm font-medium shadow-sm">🔥 坚持一个月</span>` : ''}
+            ${stats.longestStreak >= 100 ? `<span class="px-3 py-1.5 bg-gradient-to-r from-red-100 to-red-200 text-red-800 rounded-full text-sm font-medium shadow-sm">💎 坚持百日</span>` : ''}
+            ${stats.total >= 1000 ? `<span class="px-3 py-1.5 bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 rounded-full text-sm font-medium shadow-sm">📊 千任务达成</span>` : ''}
           </div>
         </div>
       </div>
@@ -4775,6 +5481,8 @@ class DailyPlanner {
       ${this.generateSearchPanelHTML()}
       ${this.generateMoreMenuHTML()}
       ${this.generateYearlyStatsHTML()}
+      ${this.generateWeeklySummaryHTML()}
+      ${this.generateMonthlySummaryHTML()}
       ${this.generateAnniversaryModalHTML()}
       ${this.generateReminderSettingsHTML()}
       ${this.generateTagManagerHTML()}
