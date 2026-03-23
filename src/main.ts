@@ -5059,6 +5059,7 @@ class DailyPlanner {
                         <input type="text"
                                value="${step.title}"
                                onchange="planner.updateStepContent('${step.id}', 'title', this.value)"
+                               onfocus="planner.setFocusedStep('${step.id}')"
                                class="flex-1 px-3 py-1.5 text-sm font-medium rounded-lg border ${inputBg} focus:outline-none focus:ring-2 focus:ring-purple-500"
                                placeholder="标题">
                       </div>
@@ -5075,6 +5076,7 @@ class DailyPlanner {
                     <!-- 操作说明和图片 -->
                     <div class="ml-11">
                       <textarea onchange="planner.updateStepContent('${step.id}', 'content', this.value)"
+                                onfocus="planner.setFocusedStep('${step.id}')"
                                 class="w-full px-3 py-2 text-sm rounded-lg border ${inputBg} focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                                 rows="3"
                                 placeholder="输入操作说明...">${step.content}</textarea>
