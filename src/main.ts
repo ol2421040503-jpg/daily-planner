@@ -111,6 +111,24 @@ interface Tag {
   isCustom?: boolean;  // 是否是自定义标签
 }
 
+// 知识库步骤
+interface KnowledgeStep {
+  id: string;
+  title: string;        // 步骤标题
+  content: string;      // 步骤内容/操作说明
+  imageUrl?: string;    // 图片URL（可选）
+  order: number;        // 排序顺序
+}
+
+// 知识库指南
+interface KnowledgeGuide {
+  id: string;
+  name: string;         // 指南名称
+  steps: KnowledgeStep[];  // 步骤列表
+  createdAt: number;    // 创建时间
+  updatedAt: number;    // 更新时间
+}
+
 // 预设标签配置
 // 预设标签（用户可自行删除）
 const DEFAULT_TAGS: Tag[] = [
@@ -306,6 +324,12 @@ class DailyPlanner {
   private showTaskPanel: boolean = false;  // 显示任务面板
   private preselectedTime: string = '';  // 预选时间（用于周视图点击时间格子）
   
+  // 知识库相关
+  private showKnowledgeBase: boolean = false;  // 显示知识库
+  private knowledgeGuides: KnowledgeGuide[] = [];  // 所有指南
+  private currentGuide: KnowledgeGuide | null = null;  // 当前编辑的指南
+  private editingGuideId: string = '';  // 正在编辑的指南ID
+  
   // 提醒配置
   private reminderConfig = {
     anniversary: 3,   // 纪念日提前3天
@@ -331,6 +355,7 @@ class DailyPlanner {
     this.tagOrder = this.loadTagOrder();  // 加载标签排序
     this.deletedDefaultTagIds = new Set(this.loadDeletedDefaultTagIds());  // 加载已删除的预设标签
     this.summaryNotes = this.loadSummaryNotes();  // 加载总结文字
+    this.knowledgeGuides = this.loadKnowledgeGuides();  // 加载知识库指南
     this.monthlyFilter = 'all';
     this.showStatsModal = false;
     this.currentTheme = this.loadTheme();
@@ -341,6 +366,7 @@ class DailyPlanner {
     this.loadHolidaysForYear(this.currentDate.getFullYear());
     this.applyThemeMode();
     this.initElectronAPI();
+    this.initPasteListener();  // 初始化粘贴监听（用于截图）
     this.startDateAutoUpdate();  // 启动日期自动更新
     this.render();
   }
@@ -349,6 +375,15 @@ class DailyPlanner {
   private loadTaskSortBy(): TaskSortBy {
     const saved = localStorage.getItem('dailyPlannerTaskSortBy');
     return saved ? saved as TaskSortBy : 'priority';
+  }
+
+  // 初始化粘贴监听器（用于截图功能）
+  private initPasteListener(): void {
+    document.addEventListener('paste', (e) => {
+      if (this.showKnowledgeBase && this.screenshotStepId) {
+        this.handlePaste(e);
+      }
+    });
   }
 
   // 启动日期自动更新（每分钟检查一次）
@@ -1421,6 +1456,128 @@ class DailyPlanner {
   // 保存总结文字
   private saveSummaryNotes(): void {
     localStorage.setItem('dailyPlannerSummaryNotes', JSON.stringify(this.summaryNotes));
+  }
+
+  // 加载知识库指南
+  private loadKnowledgeGuides(): KnowledgeGuide[] {
+    const saved = localStorage.getItem('dailyPlannerKnowledgeGuides');
+    return saved ? JSON.parse(saved) : [];
+  }
+
+  // 保存知识库指南
+  private saveKnowledgeGuides(): void {
+    localStorage.setItem('dailyPlannerKnowledgeGuides', JSON.stringify(this.knowledgeGuides));
+  }
+
+  // 创建新指南
+  public createNewGuide(): void {
+    const newGuide: KnowledgeGuide = {
+      id: Date.now().toString(),
+      name: '新指南',
+      steps: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    this.knowledgeGuides.push(newGuide);
+    this.saveKnowledgeGuides();
+    this.editingGuideId = newGuide.id;
+    this.currentGuide = newGuide;
+    this.render();
+  }
+
+  // 打开指南编辑
+  public openGuideEdit(guideId: string): void {
+    const guide = this.knowledgeGuides.find(g => g.id === guideId);
+    if (guide) {
+      this.currentGuide = { ...guide, steps: [...guide.steps] };
+      this.editingGuideId = guideId;
+      this.render();
+    }
+  }
+
+  // 保存当前指南
+  public saveCurrentGuide(): void {
+    if (!this.currentGuide) return;
+    const index = this.knowledgeGuides.findIndex(g => g.id === this.currentGuide!.id);
+    if (index >= 0) {
+      this.currentGuide.updatedAt = Date.now();
+      this.knowledgeGuides[index] = { ...this.currentGuide };
+      this.saveKnowledgeGuides();
+    }
+  }
+
+  // 删除指南
+  public deleteGuide(guideId: string): void {
+    this.knowledgeGuides = this.knowledgeGuides.filter(g => g.id !== guideId);
+    this.saveKnowledgeGuides();
+    this.render();
+  }
+
+  // 添加步骤
+  public addStepToGuide(): void {
+    if (!this.currentGuide) return;
+    const newStep: KnowledgeStep = {
+      id: Date.now().toString(),
+      title: `步骤 ${this.currentGuide.steps.length + 1}`,
+      content: '',
+      order: this.currentGuide.steps.length
+    };
+    this.currentGuide.steps.push(newStep);
+    this.saveCurrentGuide();
+    this.render();
+  }
+
+  // 删除步骤
+  public deleteStep(stepId: string): void {
+    if (!this.currentGuide) return;
+    this.currentGuide.steps = this.currentGuide.steps.filter(s => s.id !== stepId);
+    // 重新排序
+    this.currentGuide.steps.forEach((s, i) => s.order = i);
+    this.saveCurrentGuide();
+    this.render();
+  }
+
+  // 移动步骤
+  public moveStep(stepId: string, direction: 'up' | 'down'): void {
+    if (!this.currentGuide) return;
+    const index = this.currentGuide.steps.findIndex(s => s.id === stepId);
+    if (index === -1) return;
+    
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= this.currentGuide.steps.length) return;
+    
+    // 交换位置
+    [this.currentGuide.steps[index], this.currentGuide.steps[newIndex]] = 
+    [this.currentGuide.steps[newIndex], this.currentGuide.steps[index]];
+    
+    // 更新排序
+    this.currentGuide.steps.forEach((s, i) => s.order = i);
+    this.saveCurrentGuide();
+    this.render();
+  }
+
+  // 更新步骤内容
+  public updateStepContent(stepId: string, field: 'title' | 'content', value: string): void {
+    if (!this.currentGuide) return;
+    const step = this.currentGuide.steps.find(s => s.id === stepId);
+    if (step) {
+      step[field] = value;
+      this.saveCurrentGuide();
+    }
+  }
+
+  // 更新指南名称
+  public updateGuideName(name: string): void {
+    if (!this.currentGuide) return;
+    this.currentGuide.name = name;
+    this.saveCurrentGuide();
+  }
+
+  // 返回知识库列表
+  public backToGuideList(): void {
+    this.currentGuide = null;
+    this.editingGuideId = '';
+    this.render();
   }
 
   // 获取周标识（如 "2024-W01"），支持偏移量
@@ -4598,8 +4755,320 @@ class DailyPlanner {
             <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">年度回顾</div>
           </button>
         </div>
+        <!-- 知识库入口 -->
+        <div class="mt-3 pt-3 border-t ${isDark ? 'border-gray-600' : 'border-gray-200'}">
+          <button onclick="event.stopPropagation(); planner.showKnowledgeBase = true; planner.render();"
+                  class="w-full flex items-center justify-center gap-2 p-3 rounded-lg ${isDark ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500' : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-400 hover:to-blue-400'} text-white shadow-md transition-all">
+            <span class="text-lg">📚</span>
+            <span class="text-sm font-medium">个人知识库</span>
+            <span class="text-xs opacity-75">(${this.knowledgeGuides.length})</span>
+          </button>
+        </div>
       </div>
     `;
+  }
+
+  // 生成知识库弹窗 HTML
+  private generateKnowledgeBaseHTML(): string {
+    if (!this.showKnowledgeBase) return '';
+    
+    const isDark = this.themeMode === 'dark';
+    const bgClass = isDark ? 'bg-gray-800' : 'bg-white';
+    const textClass = isDark ? 'text-gray-100' : 'text-gray-800';
+    const inputBg = isDark ? 'bg-gray-700 border-gray-600 text-gray-100' : 'bg-white border-gray-300 text-gray-800';
+    
+    // 如果正在编辑某个指南，显示编辑页面
+    if (this.currentGuide) {
+      return this.generateGuideEditorHTML(isDark, bgClass, textClass, inputBg);
+    }
+    
+    // 否则显示指南列表页面
+    return `
+      <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
+           onclick="planner.showKnowledgeBase = false; planner.render();">
+        <div class="${bgClass} rounded-2xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+             onclick="event.stopPropagation()">
+          
+          <!-- 标题 -->
+          <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3">
+              <span class="text-3xl">📚</span>
+              <div>
+                <h2 class="text-xl font-bold ${textClass}">个人知识库</h2>
+                <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">管理你的步骤指南和教程</p>
+              </div>
+            </div>
+            <button onclick="planner.showKnowledgeBase = false; planner.render();"
+                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+              <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          
+          <!-- 新建指南按钮 -->
+          <button onclick="planner.createNewGuide()"
+                  class="w-full mb-4 p-4 border-2 border-dashed ${isDark ? 'border-gray-600 hover:border-purple-500 hover:bg-gray-700' : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'} rounded-xl transition-all flex items-center justify-center gap-2">
+            <svg class="w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            <span class="${isDark ? 'text-gray-300' : 'text-gray-600'}">创建新指南</span>
+          </button>
+          
+          <!-- 指南列表 -->
+          ${this.knowledgeGuides.length === 0 ? `
+            <div class="text-center py-12">
+              <div class="text-6xl mb-4">📖</div>
+              <p class="${isDark ? 'text-gray-400' : 'text-gray-500'}">还没有任何指南</p>
+              <p class="text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'} mt-2">点击上方按钮创建你的第一个指南</p>
+            </div>
+          ` : `
+            <div class="space-y-3">
+              ${this.knowledgeGuides.map(guide => `
+                <div class="p-4 ${isDark ? 'bg-gray-700 hover:bg-gray-650' : 'bg-gray-50 hover:bg-gray-100'} rounded-xl transition-all cursor-pointer group"
+                     onclick="planner.openGuideEdit('${guide.id}')">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <span class="text-2xl">📋</span>
+                      <div>
+                        <h3 class="font-medium ${textClass}">${guide.name}</h3>
+                        <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${guide.steps.length} 个步骤 · 更新于 ${new Date(guide.updatedAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <button onclick="event.stopPropagation(); planner.deleteGuide('${guide.id}')"
+                              class="p-2 opacity-0 group-hover:opacity-100 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-all">
+                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                      </button>
+                      <svg class="w-5 h-5 ${isDark ? 'text-gray-500' : 'text-gray-400'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `}
+        </div>
+      </div>
+    `;
+  }
+
+  // 生成指南编辑器 HTML
+  private generateGuideEditorHTML(isDark: boolean, bgClass: string, textClass: string, inputBg: string): string {
+    if (!this.currentGuide) return '';
+    
+    return `
+      <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
+           onclick="planner.showKnowledgeBase = false; planner.currentGuide = null; planner.editingGuideId = ''; planner.render();">
+        <div class="${bgClass} rounded-2xl shadow-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+             onclick="event.stopPropagation()">
+          
+          <!-- 顶部导航 -->
+          <div class="flex items-center justify-between mb-6">
+            <button onclick="planner.backToGuideList()"
+                    class="flex items-center gap-2 px-3 py-2 ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'} rounded-lg transition-colors">
+              <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+              </svg>
+              <span class="${isDark ? 'text-gray-300' : 'text-gray-600'}">返回列表</span>
+            </button>
+            <button onclick="planner.showKnowledgeBase = false; planner.currentGuide = null; planner.editingGuideId = ''; planner.render();"
+                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+              <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          
+          <!-- 指南名称 -->
+          <div class="mb-6">
+            <label class="block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'} mb-2">指南名称</label>
+            <input type="text" 
+                   value="${this.currentGuide.name}"
+                   onchange="planner.updateGuideName(this.value)"
+                   class="w-full px-4 py-3 text-lg font-medium rounded-xl border ${inputBg} focus:outline-none focus:ring-2 focus:ring-purple-500"
+                   placeholder="输入指南名称...">
+          </div>
+          
+          <!-- 步骤列表 -->
+          <div class="mb-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold ${textClass}">步骤列表</h3>
+              <span class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${this.currentGuide.steps.length} 个步骤</span>
+            </div>
+            
+            ${this.currentGuide.steps.length === 0 ? `
+              <div class="text-center py-8 ${isDark ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-xl">
+                <div class="text-4xl mb-2">📝</div>
+                <p class="${isDark ? 'text-gray-400' : 'text-gray-500'}">还没有步骤</p>
+                <p class="text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}">点击下方按钮添加步骤</p>
+              </div>
+            ` : `
+              <div class="space-y-4">
+                ${this.currentGuide.steps.map((step, index) => `
+                  <div class="p-4 ${isDark ? 'bg-gray-700' : 'bg-gray-50'} rounded-xl border ${isDark ? 'border-gray-600' : 'border-gray-200'}">
+                    <!-- 步骤头部 -->
+                    <div class="flex items-center justify-between mb-3">
+                      <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 flex items-center justify-center ${isDark ? 'bg-purple-600' : 'bg-purple-500'} text-white text-sm font-bold rounded-full">${index + 1}</span>
+                        <input type="text"
+                               value="${step.title}"
+                               onchange="planner.updateStepContent('${step.id}', 'title', this.value)"
+                               class="px-3 py-1 text-sm font-medium rounded-lg border ${inputBg} focus:outline-none focus:ring-2 focus:ring-purple-500"
+                               placeholder="步骤标题">
+                      </div>
+                      <div class="flex items-center gap-1">
+                        <button onclick="planner.moveStep('${step.id}', 'up')"
+                                class="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors ${index === 0 ? 'opacity-30 cursor-not-allowed' : ''}"
+                                ${index === 0 ? 'disabled' : ''}>
+                          <svg class="w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                          </svg>
+                        </button>
+                        <button onclick="planner.moveStep('${step.id}', 'down')"
+                                class="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors ${index === this.currentGuide!.steps.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}"
+                                ${index === this.currentGuide!.steps.length - 1 ? 'disabled' : ''}>
+                          <svg class="w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                          </svg>
+                        </button>
+                        <button onclick="planner.deleteStep('${step.id}')"
+                                class="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors">
+                          <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <!-- 操作说明 -->
+                    <textarea onchange="planner.updateStepContent('${step.id}', 'content', this.value)"
+                              class="w-full px-3 py-2 text-sm rounded-lg border ${inputBg} focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                              rows="3"
+                              placeholder="输入操作说明...">${step.content}</textarea>
+                    
+                    <!-- 图片区域 -->
+                    ${step.imageUrl ? `
+                      <div class="mt-3 relative">
+                        <img src="${step.imageUrl}" alt="步骤图片" class="w-full max-h-48 object-cover rounded-lg">
+                        <button onclick="planner.removeStepImage('${step.id}')"
+                                class="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 rounded-full transition-colors">
+                          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                          </svg>
+                        </button>
+                      </div>
+                    ` : `
+                      <div class="mt-3 flex gap-2">
+                        <button onclick="planner.triggerImageUpload('${step.id}')"
+                                class="flex-1 px-3 py-2 text-sm ${isDark ? 'bg-gray-600 hover:bg-gray-500' : 'bg-white hover:bg-gray-100'} border ${isDark ? 'border-gray-500' : 'border-gray-300'} rounded-lg transition-colors flex items-center justify-center gap-1">
+                          <span>🖼️</span>
+                          <span>上传图片</span>
+                        </button>
+                        <button onclick="planner.triggerScreenshot('${step.id}')"
+                                class="flex-1 px-3 py-2 text-sm ${isDark ? 'bg-gray-600 hover:bg-gray-500' : 'bg-white hover:bg-gray-100'} border ${isDark ? 'border-gray-500' : 'border-gray-300'} rounded-lg transition-colors flex items-center justify-center gap-1">
+                          <span>📷</span>
+                          <span>截图粘贴</span>
+                        </button>
+                      </div>
+                    `}
+                  </div>
+                `).join('')}
+              </div>
+            `}
+          </div>
+          
+          <!-- 添加步骤按钮 -->
+          <button onclick="planner.addStepToGuide()"
+                  class="w-full p-4 border-2 border-dashed ${isDark ? 'border-gray-600 hover:border-purple-500 hover:bg-gray-700' : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'} rounded-xl transition-all flex items-center justify-center gap-2">
+            <svg class="w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            <span class="${isDark ? 'text-gray-300' : 'text-gray-600'}">添加步骤</span>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // 触发图片上传
+  public triggerImageUpload(stepId: string): void {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const base64 = event.target?.result as string;
+          this.updateStepImage(stepId, base64);
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    input.click();
+  }
+
+  // 更新步骤图片
+  private updateStepImage(stepId: string, imageUrl: string): void {
+    if (!this.currentGuide) return;
+    const step = this.currentGuide.steps.find(s => s.id === stepId);
+    if (step) {
+      step.imageUrl = imageUrl;
+      this.saveCurrentGuide();
+      this.render();
+    }
+  }
+
+  // 移除步骤图片
+  public removeStepImage(stepId: string): void {
+    if (!this.currentGuide) return;
+    const step = this.currentGuide.steps.find(s => s.id === stepId);
+    if (step) {
+      step.imageUrl = undefined;
+      this.saveCurrentGuide();
+      this.render();
+    }
+  }
+
+  // 触发截图（监听粘贴事件）
+  public triggerScreenshot(stepId: string): void {
+    // 提示用户
+    alert('请使用截图工具截图，然后在此页面粘贴（Ctrl+V 或 Cmd+V）');
+    
+    // 设置当前步骤ID，等待粘贴
+    this.screenshotStepId = stepId;
+  }
+
+  // 截图步骤ID（临时存储）
+  private screenshotStepId: string = '';
+
+  // 处理粘贴图片
+  public handlePaste(event: ClipboardEvent): void {
+    if (!this.screenshotStepId) return;
+    
+    const items = event.clipboardData?.items;
+    if (!items) return;
+    
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const base64 = e.target?.result as string;
+            this.updateStepImage(this.screenshotStepId, base64);
+            this.screenshotStepId = '';
+          };
+          reader.readAsDataURL(file);
+        }
+        break;
+      }
+    }
   }
 
   // 生成周总结弹窗 HTML
@@ -5815,6 +6284,7 @@ class DailyPlanner {
       ${this.generateUpdateModalHTML()}
       ${this.generateShortcutHelpHTML()}
       ${this.generateContactInfoHTML()}
+      ${this.generateKnowledgeBaseHTML()}
     `;
 
     // 使用 requestAnimationFrame 确保 DOM 渲染完成后再添加动画类
