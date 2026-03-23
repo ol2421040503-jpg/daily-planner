@@ -379,11 +379,47 @@ class DailyPlanner {
 
   // 初始化粘贴监听器（用于截图功能）
   private initPasteListener(): void {
+    // 监听粘贴事件
     document.addEventListener('paste', (e) => {
       if (this.showKnowledgeBase && this.screenshotStepId) {
         this.handlePaste(e);
       }
     });
+    
+    // 监听F1快捷键（截图粘贴）
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'F1' && this.showKnowledgeBase && this.screenshotStepId) {
+        e.preventDefault();
+        // 尝试从剪贴板读取图片
+        this.readClipboardImage();
+      }
+    });
+  }
+
+  // 从剪贴板读取图片
+  private async readClipboardImage(): Promise<void> {
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      for (const item of clipboardItems) {
+        for (const type of item.types) {
+          if (type.startsWith('image/')) {
+            const blob = await item.getType(type);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const base64 = e.target?.result as string;
+              this.updateStepImage(this.screenshotStepId, base64);
+              this.screenshotStepId = '';
+            };
+            reader.readAsDataURL(blob);
+            return;
+          }
+        }
+      }
+      // 如果没有图片，提示用户
+      console.log('剪贴板中没有图片');
+    } catch (err) {
+      console.log('读取剪贴板失败，请尝试Ctrl+V粘贴:', err);
+    }
   }
 
   // 启动日期自动更新（每分钟检查一次）
@@ -4907,34 +4943,34 @@ class DailyPlanner {
                 <p class="text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}">点击下方按钮添加步骤</p>
               </div>
             ` : `
-              <div class="space-y-4">
+              <div class="space-y-4" id="stepsContainer">
                 ${this.currentGuide.steps.map((step, index) => `
-                  <div class="p-4 ${isDark ? 'bg-gray-700' : 'bg-gray-50'} rounded-xl border ${isDark ? 'border-gray-600' : 'border-gray-200'}">
+                  <div class="p-4 ${isDark ? 'bg-gray-700' : 'bg-gray-50'} rounded-xl border ${isDark ? 'border-gray-600' : 'border-gray-200'} cursor-move"
+                       draggable="true"
+                       ondragstart="planner.handleDragStart(event, '${step.id}')"
+                       ondragover="planner.handleDragOver(event)"
+                       ondrop="planner.handleDrop(event, '${step.id}')"
+                       ondragend="planner.handleDragEnd(event)"
+                       data-step-id="${step.id}">
                     <!-- 步骤头部 -->
                     <div class="flex items-center justify-between mb-3">
-                      <div class="flex items-center gap-2">
-                        <span class="w-7 h-7 flex items-center justify-center ${isDark ? 'bg-purple-600' : 'bg-purple-500'} text-white text-sm font-bold rounded-full">${index + 1}</span>
+                      <div class="flex items-center gap-3">
+                        <!-- 拖拽手柄 -->
+                        <div class="cursor-grab ${isDark ? 'text-gray-500' : 'text-gray-400'} hover:${isDark ? 'text-gray-300' : 'text-gray-600'}">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
+                          </svg>
+                        </div>
+                        <!-- 步骤序号 -->
+                        <span class="step-number w-8 h-8 flex items-center justify-center ${isDark ? 'bg-purple-600' : 'bg-purple-500'} text-white text-sm font-bold rounded-full">${index + 1}</span>
+                        <!-- 标题输入 -->
                         <input type="text"
                                value="${step.title}"
                                onchange="planner.updateStepContent('${step.id}', 'title', this.value)"
-                               class="px-3 py-1 text-sm font-medium rounded-lg border ${inputBg} focus:outline-none focus:ring-2 focus:ring-purple-500"
-                               placeholder="步骤标题">
+                               class="flex-1 px-3 py-1.5 text-sm font-medium rounded-lg border ${inputBg} focus:outline-none focus:ring-2 focus:ring-purple-500"
+                               placeholder="标题">
                       </div>
                       <div class="flex items-center gap-1">
-                        <button onclick="planner.moveStep('${step.id}', 'up')"
-                                class="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors ${index === 0 ? 'opacity-30 cursor-not-allowed' : ''}"
-                                ${index === 0 ? 'disabled' : ''}>
-                          <svg class="w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
-                          </svg>
-                        </button>
-                        <button onclick="planner.moveStep('${step.id}', 'down')"
-                                class="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors ${index === this.currentGuide!.steps.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}"
-                                ${index === this.currentGuide!.steps.length - 1 ? 'disabled' : ''}>
-                          <svg class="w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                          </svg>
-                        </button>
                         <button onclick="planner.deleteStep('${step.id}')"
                                 class="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors">
                           <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4946,13 +4982,13 @@ class DailyPlanner {
                     
                     <!-- 操作说明 -->
                     <textarea onchange="planner.updateStepContent('${step.id}', 'content', this.value)"
-                              class="w-full px-3 py-2 text-sm rounded-lg border ${inputBg} focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                              class="w-full px-3 py-2 text-sm rounded-lg border ${inputBg} focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none ml-11"
                               rows="3"
                               placeholder="输入操作说明...">${step.content}</textarea>
                     
                     <!-- 图片区域 -->
                     ${step.imageUrl ? `
-                      <div class="mt-3 relative">
+                      <div class="mt-3 ml-11 relative">
                         <img src="${step.imageUrl}" alt="步骤图片" class="w-full max-h-48 object-cover rounded-lg">
                         <button onclick="planner.removeStepImage('${step.id}')"
                                 class="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 rounded-full transition-colors">
@@ -4962,7 +4998,7 @@ class DailyPlanner {
                         </button>
                       </div>
                     ` : `
-                      <div class="mt-3 flex gap-2">
+                      <div class="mt-3 ml-11 flex gap-2">
                         <button onclick="planner.triggerImageUpload('${step.id}')"
                                 class="flex-1 px-3 py-2 text-sm ${isDark ? 'bg-gray-600 hover:bg-gray-500' : 'bg-white hover:bg-gray-100'} border ${isDark ? 'border-gray-500' : 'border-gray-300'} rounded-lg transition-colors flex items-center justify-center gap-1">
                           <span>🖼️</span>
@@ -4971,7 +5007,7 @@ class DailyPlanner {
                         <button onclick="planner.triggerScreenshot('${step.id}')"
                                 class="flex-1 px-3 py-2 text-sm ${isDark ? 'bg-gray-600 hover:bg-gray-500' : 'bg-white hover:bg-gray-100'} border ${isDark ? 'border-gray-500' : 'border-gray-300'} rounded-lg transition-colors flex items-center justify-center gap-1">
                           <span>📷</span>
-                          <span>截图粘贴</span>
+                          <span>截图粘贴 (F1)</span>
                         </button>
                       </div>
                     `}
@@ -4992,6 +5028,46 @@ class DailyPlanner {
         </div>
       </div>
     `;
+  }
+
+  // 拖拽相关
+  private draggedStepId: string = '';
+
+  public handleDragStart(event: DragEvent, stepId: string): void {
+    this.draggedStepId = stepId;
+    const target = event.target as HTMLElement;
+    target.classList.add('opacity-50');
+    event.dataTransfer!.effectAllowed = 'move';
+  }
+
+  public handleDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.dataTransfer!.dropEffect = 'move';
+  }
+
+  public handleDrop(event: DragEvent, targetStepId: string): void {
+    event.preventDefault();
+    if (!this.currentGuide || this.draggedStepId === targetStepId) return;
+    
+    const draggedIndex = this.currentGuide.steps.findIndex(s => s.id === this.draggedStepId);
+    const targetIndex = this.currentGuide.steps.findIndex(s => s.id === targetStepId);
+    
+    if (draggedIndex === -1 || targetIndex === -1) return;
+    
+    // 移动步骤
+    const [draggedStep] = this.currentGuide.steps.splice(draggedIndex, 1);
+    this.currentGuide.steps.splice(targetIndex, 0, draggedStep);
+    
+    // 更新排序
+    this.currentGuide.steps.forEach((s, i) => s.order = i);
+    this.saveCurrentGuide();
+    this.render();
+  }
+
+  public handleDragEnd(event: DragEvent): void {
+    const target = event.target as HTMLElement;
+    target.classList.remove('opacity-50');
+    this.draggedStepId = '';
   }
 
   // 触发图片上传
@@ -5037,11 +5113,15 @@ class DailyPlanner {
 
   // 触发截图（监听粘贴事件）
   public triggerScreenshot(stepId: string): void {
-    // 提示用户
-    alert('请使用截图工具截图，然后在此页面粘贴（Ctrl+V 或 Cmd+V）');
-    
-    // 设置当前步骤ID，等待粘贴
+    // 设置当前步骤ID，等待F1快捷键触发粘贴
     this.screenshotStepId = stepId;
+    
+    // 视觉反馈
+    const btn = event?.target as HTMLElement;
+    if (btn) {
+      btn.classList.add('ring-2', 'ring-purple-500');
+      setTimeout(() => btn.classList.remove('ring-2', 'ring-purple-500'), 2000);
+    }
   }
 
   // 截图步骤ID（临时存储）
