@@ -5075,12 +5075,19 @@ class DailyPlanner {
                     
                     <!-- 操作说明和图片 -->
                     <div class="ml-11">
-                      <!-- 内容编辑区域（图片+文本框一体化） -->
+                      <!-- 内容编辑区域（文字+图片一体化） -->
                       <div class="w-full rounded-lg border ${isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-white'} overflow-hidden focus-within:ring-2 focus-within:ring-purple-500"
                            onclick="planner.setFocusedStep('${step.id}')">
-                        <!-- 图片显示区域（在文本框内部上方） -->
+                        <!-- 文本输入区域 -->
+                        <textarea onchange="planner.updateStepContent('${step.id}', 'content', this.value)"
+                                  onfocus="planner.setFocusedStep('${step.id}')"
+                                  class="w-full px-3 py-2 text-sm ${isDark ? 'bg-transparent text-gray-100' : 'bg-transparent text-gray-800'} focus:outline-none resize-none"
+                                  rows="3"
+                                  placeholder="输入操作说明...">${step.content}</textarea>
+                        
+                        <!-- 图片显示区域（在文字下方） -->
                         ${step.imageUrl ? `
-                          <div class="relative p-2 ${isDark ? 'bg-gray-750' : 'bg-gray-50'} border-b ${isDark ? 'border-gray-600' : 'border-gray-200'}">
+                          <div class="relative p-2 ${isDark ? 'bg-gray-750' : 'bg-gray-50'} border-t ${isDark ? 'border-gray-600' : 'border-gray-200'}">
                             <img src="${step.imageUrl}" alt="步骤图片" class="max-w-full max-h-40 object-contain rounded mx-auto">
                             <button onclick="event.stopPropagation(); planner.removeStepImage('${step.id}')"
                                     class="absolute top-1 right-1 p-1 bg-red-500 hover:bg-red-600 rounded-full transition-colors shadow-sm">
@@ -5090,12 +5097,6 @@ class DailyPlanner {
                             </button>
                           </div>
                         ` : ''}
-                        <!-- 文本输入区域 -->
-                        <textarea onchange="planner.updateStepContent('${step.id}', 'content', this.value)"
-                                  onfocus="planner.setFocusedStep('${step.id}')"
-                                  class="w-full px-3 py-2 text-sm ${isDark ? 'bg-transparent text-gray-100' : 'bg-transparent text-gray-800'} focus:outline-none resize-none"
-                                  rows="3"
-                                  placeholder="输入操作说明...">${step.content}</textarea>
                       </div>
                       
                       <!-- 图片操作按钮 -->
@@ -5193,6 +5194,10 @@ class DailyPlanner {
   // 更新步骤图片
   private updateStepImage(stepId: string, imageUrl: string): void {
     if (!this.currentGuide) return;
+    
+    // 先保存当前文本框中的值（防止文字丢失）
+    this.saveCurrentTextareaValue(stepId);
+    
     const step = this.currentGuide.steps.find(s => s.id === stepId);
     if (step) {
       step.imageUrl = imageUrl;
@@ -5200,10 +5205,28 @@ class DailyPlanner {
       this.render();
     }
   }
+  
+  // 保存当前文本框中的值
+  private saveCurrentTextareaValue(stepId: string): void {
+    if (!this.currentGuide) return;
+    
+    // 查找对应的 textarea 元素
+    const textarea = document.querySelector(`[data-step-id="${stepId}"] textarea`) as HTMLTextAreaElement;
+    if (textarea) {
+      const step = this.currentGuide.steps.find(s => s.id === stepId);
+      if (step && textarea.value !== step.content) {
+        step.content = textarea.value;
+      }
+    }
+  }
 
   // 移除步骤图片
   public removeStepImage(stepId: string): void {
     if (!this.currentGuide) return;
+    
+    // 先保存当前文本框中的值（防止文字丢失）
+    this.saveCurrentTextareaValue(stepId);
+    
     const step = this.currentGuide.steps.find(s => s.id === stepId);
     if (step) {
       step.imageUrl = undefined;
