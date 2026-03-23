@@ -381,22 +381,38 @@ class DailyPlanner {
   private initPasteListener(): void {
     // 监听粘贴事件
     document.addEventListener('paste', (e) => {
-      if (this.showKnowledgeBase && this.screenshotStepId) {
-        this.handlePaste(e);
+      // 只有在编辑指南时才处理粘贴
+      if (this.showKnowledgeBase && this.currentGuide) {
+        // 如果有指定步骤ID，粘贴到指定步骤
+        if (this.screenshotStepId) {
+          this.handlePaste(e);
+        } else {
+          // 否则粘贴到当前活动的步骤（最后一个步骤或焦点的步骤）
+          this.handlePasteToActiveStep(e);
+        }
       }
     });
     
-    // 监听F1快捷键（截图粘贴）
+    // 监听Ctrl+B快捷键（截图粘贴）
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'F1' && this.showKnowledgeBase && this.screenshotStepId) {
-        e.preventDefault();
-        // 尝试从剪贴板读取图片
-        this.readClipboardImage();
+      // Ctrl+B 或 Cmd+B（Mac）
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        // 只有在编辑指南时才触发
+        if (this.showKnowledgeBase && this.currentGuide) {
+          e.preventDefault();
+          // 如果有指定步骤ID，读取到指定步骤
+          if (this.screenshotStepId) {
+            this.readClipboardImage();
+          } else {
+            // 否则读取到当前活动的步骤
+            this.readClipboardToActiveStep();
+          }
+        }
       }
     });
   }
 
-  // 从剪贴板读取图片
+  // 从剪贴板读取图片到指定步骤
   private async readClipboardImage(): Promise<void> {
     try {
       const clipboardItems = await navigator.clipboard.read();
@@ -419,6 +435,69 @@ class DailyPlanner {
       console.log('剪贴板中没有图片');
     } catch (err) {
       console.log('读取剪贴板失败，请尝试Ctrl+V粘贴:', err);
+    }
+  }
+
+  // 获取当前活动的步骤ID（最后一个步骤，如果没有步骤则返回空）
+  private getActiveStepId(): string {
+    if (!this.currentGuide || this.currentGuide.steps.length === 0) {
+      return '';
+    }
+    // 返回最后一个步骤的ID
+    return this.currentGuide.steps[this.currentGuide.steps.length - 1].id;
+  }
+
+  // 从剪贴板读取图片到当前活动的步骤
+  private async readClipboardToActiveStep(): Promise<void> {
+    const activeStepId = this.getActiveStepId();
+    if (!activeStepId) {
+      console.log('没有可用的步骤');
+      return;
+    }
+    
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      for (const item of clipboardItems) {
+        for (const type of item.types) {
+          if (type.startsWith('image/')) {
+            const blob = await item.getType(type);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const base64 = e.target?.result as string;
+              this.updateStepImage(activeStepId, base64);
+            };
+            reader.readAsDataURL(blob);
+            return;
+          }
+        }
+      }
+      console.log('剪贴板中没有图片');
+    } catch (err) {
+      console.log('读取剪贴板失败:', err);
+    }
+  }
+
+  // 处理粘贴到当前活动的步骤
+  private handlePasteToActiveStep(event: ClipboardEvent): void {
+    const activeStepId = this.getActiveStepId();
+    if (!activeStepId) return;
+    
+    const items = event.clipboardData?.items;
+    if (!items) return;
+    
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const base64 = e.target?.result as string;
+            this.updateStepImage(activeStepId, base64);
+          };
+          reader.readAsDataURL(file);
+        }
+        break;
+      }
     }
   }
 
@@ -5010,7 +5089,7 @@ class DailyPlanner {
                         <button onclick="planner.triggerScreenshot('${step.id}')"
                                 class="px-2 py-1 text-xs ${isDark ? 'bg-gray-600 hover:bg-gray-500 text-gray-200' : 'bg-gray-200 hover:bg-gray-300 text-gray-600'} rounded transition-colors flex items-center gap-1">
                           <span>📷</span>
-                          <span>截图(F1)</span>
+                          <span>截图(Ctrl+B)</span>
                         </button>
                       </div>
                     </div>
@@ -5116,7 +5195,7 @@ class DailyPlanner {
 
   // 触发截图（监听粘贴事件）
   public triggerScreenshot(stepId: string): void {
-    // 设置当前步骤ID，等待F1快捷键触发粘贴
+    // 设置当前步骤ID，等待Ctrl+B快捷键触发粘贴
     this.screenshotStepId = stepId;
     
     // 视觉反馈
