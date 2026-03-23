@@ -173,5 +173,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 移除所有监听器
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);
+  },
+
+  // ==================== 文件存储 ====================
+  
+  // 保存知识库到文件
+  saveKnowledgeFile: (data) => {
+    return ipcRenderer.invoke('save-knowledge-file', data);
+  },
+
+  // 从文件加载知识库
+  loadKnowledgeFile: () => {
+    return ipcRenderer.invoke('load-knowledge-file');
   }
 });

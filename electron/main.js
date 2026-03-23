@@ -8,6 +8,7 @@
 
 const { app, BrowserWindow, Notification, ipcMain, Tray, Menu, nativeImage, globalShortcut } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
 
 let mainWindow;
@@ -50,6 +51,36 @@ const REMINDER_CONFIG = {
 };
 
 // ==================== 自动更新 ====================
+
+// ==================== 文件存储 ====================
+// 获取用户数据目录
+const userDataPath = app.getPath('userData');
+const knowledgeFilePath = path.join(userDataPath, 'knowledge-guides.json');
+
+// 保存知识库到文件
+function saveKnowledgeToFile(data) {
+  try {
+    fs.writeFileSync(knowledgeFilePath, JSON.stringify(data, null, 2), 'utf-8');
+    return { success: true };
+  } catch (error) {
+    console.error('保存知识库失败:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// 从文件加载知识库
+function loadKnowledgeFromFile() {
+  try {
+    if (fs.existsSync(knowledgeFilePath)) {
+      const data = fs.readFileSync(knowledgeFilePath, 'utf-8');
+      return JSON.parse(data);
+    }
+    return [];
+  } catch (error) {
+    console.error('加载知识库失败:', error);
+    return [];
+  }
+}
 
 // 配置自动更新
 function setupAutoUpdater() {
@@ -632,6 +663,18 @@ ipcMain.handle('set-auto-start', (event, enable) => {
     openAsHidden: false
   });
   return app.getLoginItemSettings().openAtLogin;
+});
+
+// ==================== 文件存储 IPC ====================
+
+// 保存知识库到文件
+ipcMain.handle('save-knowledge-file', (event, data) => {
+  return saveKnowledgeToFile(data);
+});
+
+// 从文件加载知识库
+ipcMain.handle('load-knowledge-file', () => {
+  return loadKnowledgeFromFile();
 });
 
 // ==================== 自动更新 IPC ====================

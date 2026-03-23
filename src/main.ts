@@ -12,7 +12,6 @@
 import './index.css';
 import { Solar, Lunar } from 'lunar-javascript';
 
-// ==================== Electron API 类型声明 ====================
 // ==================== 版本配置 ====================
 const APP_VERSION = '1.4.1';
 const VERSION_CHECK_URL = 'https://your-server.com/api/version'; // 替换为你的版本检查API
@@ -355,7 +354,7 @@ class DailyPlanner {
     this.tagOrder = this.loadTagOrder();  // 加载标签排序
     this.deletedDefaultTagIds = new Set(this.loadDeletedDefaultTagIds());  // 加载已删除的预设标签
     this.summaryNotes = this.loadSummaryNotes();  // 加载总结文字
-    this.knowledgeGuides = this.loadKnowledgeGuides();  // 加载知识库指南
+    this.knowledgeGuides = [];  // 初始化为空，稍后异步加载
     this.monthlyFilter = 'all';
     this.showStatsModal = false;
     this.currentTheme = this.loadTheme();
@@ -368,6 +367,14 @@ class DailyPlanner {
     this.initElectronAPI();
     this.initPasteListener();  // 初始化粘贴监听（用于截图）
     this.startDateAutoUpdate();  // 启动日期自动更新
+    this.render();
+    // 异步加载知识库
+    this.initKnowledgeGuides();
+  }
+  
+  // 异步初始化知识库
+  private async initKnowledgeGuides(): Promise<void> {
+    this.knowledgeGuides = await this.loadKnowledgeGuides();
     this.render();
   }
 
@@ -1636,14 +1643,49 @@ class DailyPlanner {
   }
 
   // 加载知识库指南
-  private loadKnowledgeGuides(): KnowledgeGuide[] {
+  private async loadKnowledgeGuides(): Promise<KnowledgeGuide[]> {
+    // 优先使用文件存储（Electron环境）
+    if (window.electronAPI?.loadKnowledgeFile) {
+      try {
+        const data = await window.electronAPI.loadKnowledgeFile();
+        console.log('[知识库] 从文件加载成功');
+        return (data as KnowledgeGuide[]) || [];
+      } catch (error) {
+        console.error('[知识库] 从文件加载失败，回退到localStorage:', error);
+      }
+    }
+    // 回退到localStorage
     const saved = localStorage.getItem('dailyPlannerKnowledgeGuides');
     return saved ? JSON.parse(saved) : [];
   }
 
   // 保存知识库指南
   private saveKnowledgeGuides(): void {
-    localStorage.setItem('dailyPlannerKnowledgeGuides', JSON.stringify(this.knowledgeGuides));
+    // 异步保存，不阻塞UI
+    (async () => {
+      // 优先使用文件存储（Electron环境）
+      if (window.electronAPI?.saveKnowledgeFile) {
+        try {
+          const result = await window.electronAPI.saveKnowledgeFile(this.knowledgeGuides);
+          if (result.success) {
+            console.log('[知识库] 保存到文件成功');
+            return;
+          } else {
+            console.error('[知识库] 保存到文件失败:', result.error);
+            throw new Error(result.error);
+          }
+        } catch (error) {
+          console.error('[知识库] 保存到文件失败，尝试localStorage:', error);
+        }
+      }
+      // 回退到localStorage
+      try {
+        localStorage.setItem('dailyPlannerKnowledgeGuides', JSON.stringify(this.knowledgeGuides));
+      } catch (error) {
+        console.error('[知识库] localStorage保存失败:', error);
+        alert('存储空间不足！建议导出知识库备份后，清理一些图片。');
+      }
+    })();
   }
 
   // 导出知识库

@@ -130,6 +130,9 @@ export interface BackgroundThemeConfig {
 declare global {
   interface Window {
     electronAPI?: {
+      // 文件存储
+      saveKnowledgeFile: (data: unknown) => Promise<{ success: boolean; error?: string }>;
+      loadKnowledgeFile: () => Promise<unknown[]>;
       // 窗口控制
       minimizeToTray: () => void;
       toggleMaximize: () => void;
