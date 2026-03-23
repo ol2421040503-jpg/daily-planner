@@ -14,7 +14,7 @@ import { Solar, Lunar } from 'lunar-javascript';
 
 // ==================== Electron API 类型声明 ====================
 // ==================== 版本配置 ====================
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.4.1';
 const VERSION_CHECK_URL = 'https://your-server.com/api/version'; // 替换为你的版本检查API
 const RELEASE_NOTES: Record<string, string[]> = {
   '1.0.0': [
@@ -4097,27 +4097,6 @@ class DailyPlanner {
     return `
       <div class="fixed inset-0 z-40" onclick="planner.toggleMoreMenu()">
         <div class="absolute right-4 top-20 ${bgClass} rounded-lg shadow-xl border py-2 min-w-[200px]" onclick="event.stopPropagation()">
-          <button onclick="planner.showWeeklySummary = true; planner.showMoreMenu = false; planner.render();"
-                  class="flex items-center gap-2 px-4 py-2 w-full ${textClass} ${hoverClass} transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-            </svg>
-            周总结
-          </button>
-          <button onclick="planner.showMonthlySummary = true; planner.showMoreMenu = false; planner.render();"
-                  class="flex items-center gap-2 px-4 py-2 w-full ${textClass} ${hoverClass} transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
-            月总结
-          </button>
-          <button onclick="planner.showYearlyStats = true; planner.showMoreMenu = false; planner.render();"
-                  class="flex items-center gap-2 px-4 py-2 w-full ${textClass} ${hoverClass} transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-            </svg>
-            年度总结
-          </button>
           <button onclick="planner.showAnniversaryModal = true; planner.showMoreMenu = false; planner.render();"
                   class="flex items-center gap-2 px-4 py-2 w-full ${textClass} ${hoverClass} transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4367,6 +4346,48 @@ class DailyPlanner {
   }
 
   // 生成年度统计弹窗
+  // 生成总结按钮区域（日历下方）
+  private generateSummaryButtonsHTML(): string {
+    const isDark = this.themeMode === 'dark';
+    const bgClass = isDark ? 'bg-gray-700/50' : 'bg-gray-50';
+    const textClass = isDark ? 'text-gray-300' : 'text-gray-600';
+    
+    // 获取快速统计数据
+    const weeklyStats = this.getWeeklyStats();
+    const weeklyRate = weeklyStats.percentage;
+    
+    return `
+      <div class="mt-4 p-4 ${bgClass} rounded-xl">
+        <div class="flex items-center justify-center gap-3">
+          <button onclick="event.stopPropagation(); planner.showWeeklySummary = true; planner.render();"
+                  class="flex-1 flex flex-col items-center gap-1 p-3 rounded-lg ${isDark ? 'bg-gray-600 hover:bg-gray-500' : 'bg-white hover:bg-gray-100'} shadow-sm transition-all group">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">📊</span>
+              <span class="text-sm font-medium ${textClass}">周总结</span>
+            </div>
+            <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">${weeklyRate}% 完成</div>
+          </button>
+          <button onclick="event.stopPropagation(); planner.showMonthlySummary = true; planner.render();"
+                  class="flex-1 flex flex-col items-center gap-1 p-3 rounded-lg ${isDark ? 'bg-gray-600 hover:bg-gray-500' : 'bg-white hover:bg-gray-100'} shadow-sm transition-all group">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">📈</span>
+              <span class="text-sm font-medium ${textClass}">月总结</span>
+            </div>
+            <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">本月表现</div>
+          </button>
+          <button onclick="event.stopPropagation(); planner.showYearlyStats = true; planner.render();"
+                  class="flex-1 flex flex-col items-center gap-1 p-3 rounded-lg ${isDark ? 'bg-gray-600 hover:bg-gray-500' : 'bg-white hover:bg-gray-100'} shadow-sm transition-all group">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">🎊</span>
+              <span class="text-sm font-medium ${textClass}">年度总结</span>
+            </div>
+            <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">年度回顾</div>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
   // 生成周总结弹窗 HTML
   private generateWeeklySummaryHTML(): string {
     if (!this.showWeeklySummary) return '';
@@ -5425,6 +5446,9 @@ class DailyPlanner {
             </div>
           </div>
           ${this.viewMode === 'month' ? this.generateCalendarHTML() : this.generateWeekViewHTML()}
+          
+          <!-- 周月年总结入口 -->
+          ${this.generateSummaryButtonsHTML()}
         </div>
       </div>
       ${this.generateTaskPanelHTML()}
