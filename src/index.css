@@ -126,3 +126,24 @@ body {
   border-radius: 3px;
   margin-left: 4px;
 }
+
+/* contenteditable placeholder 效果 */
+[contenteditable="true"]:empty:before {
+  content: attr(placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+/* 深色模式下的 placeholder */
+.dark [contenteditable="true"]:empty:before {
+  color: #6b7280;
+}
+
+/* 编辑区域图片样式 */
+.inline-image {
+  transition: all 0.2s ease;
+}
+
+.inline-image:hover {
+  box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.5);
+}

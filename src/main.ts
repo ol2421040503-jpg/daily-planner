@@ -1693,6 +1693,116 @@ class DailyPlanner {
     }
   }
 
+  // 从 contenteditable 保存步骤内容
+  public saveStepContentFromEditable(stepId: string): void {
+    const editor = document.getElementById(`step-content-${stepId}`);
+    if (!editor || !this.currentGuide) return;
+    
+    const step = this.currentGuide.steps.find(s => s.id === stepId);
+    if (step) {
+      // 分离文字和图片
+      const clone = editor.cloneNode(true) as HTMLElement;
+      const img = clone.querySelector('img');
+      
+      // 获取纯文本内容（不包含图片）
+      step.content = clone.textContent || '';
+      
+      // 图片URL存储（如果有的话）
+      if (img) {
+        step.imageUrl = img.src;
+      } else {
+        step.imageUrl = undefined;
+      }
+      
+      this.saveCurrentGuide();
+    }
+  }
+
+  // 输入时处理（用于实时保存焦点状态）
+  public onStepContentInput(stepId: string): void {
+    this.setFocusedStep(stepId);
+  }
+
+  // 插入图片到步骤编辑区域
+  public insertImageToStep(stepId: string, imageUrl: string): void {
+    const editor = document.getElementById(`step-content-${stepId}`);
+    if (!editor) {
+      // 如果编辑器不存在，先更新数据然后重新渲染
+      this.updateStepImageData(stepId, imageUrl);
+      return;
+    }
+    
+    // 聚焦编辑器
+    editor.focus();
+    
+    // 移除已有图片
+    const existingImg = editor.querySelector('img');
+    if (existingImg) {
+      existingImg.remove();
+    }
+    
+    // 创建图片元素
+    const img = document.createElement('img');
+    img.src = imageUrl;
+    img.className = 'inline-image';
+    img.setAttribute('data-image-id', stepId);
+    img.style.cssText = 'max-width:100%;max-height:150px;display:block;margin-top:8px;border-radius:8px;cursor:pointer;';
+    img.onclick = (e) => {
+      e.stopPropagation();
+      this.showImageActions(stepId);
+    };
+    
+    // 插入到末尾
+    editor.appendChild(img);
+    
+    // 添加换行，方便继续输入
+    const br = document.createElement('br');
+    editor.appendChild(br);
+    
+    // 保存内容
+    this.saveStepContentFromEditable(stepId);
+  }
+
+  // 显示图片操作菜单
+  public showImageActions(stepId: string): void {
+    if (confirm('是否删除此图片？')) {
+      this.removeStepImageFromEditor(stepId);
+    }
+  }
+
+  // 从编辑区域删除图片
+  public removeStepImageFromEditor(stepId: string): void {
+    const editor = document.getElementById(`step-content-${stepId}`);
+    if (editor) {
+      const img = editor.querySelector('img');
+      if (img) {
+        img.remove();
+      }
+      this.saveStepContentFromEditable(stepId);
+    } else {
+      // 如果编辑器不存在，直接更新数据
+      if (this.currentGuide) {
+        const step = this.currentGuide.steps.find(s => s.id === stepId);
+        if (step) {
+          step.imageUrl = undefined;
+          this.saveCurrentGuide();
+          this.render();
+        }
+      }
+    }
+  }
+
+  // 更新步骤图片数据（仅数据，不操作DOM）
+  private updateStepImageData(stepId: string, imageUrl: string): void {
+    if (!this.currentGuide) return;
+    const step = this.currentGuide.steps.find(s => s.id === stepId);
+    if (step) {
+      step.imageUrl = imageUrl;
+      this.saveCurrentGuide();
+      this.render();
+    }
+  }
+
   // 更新指南名称
   public updateGuideName(name: string): void {
     if (!this.currentGuide) return;
@@ -5073,31 +5183,17 @@ class DailyPlanner {
                       </div>
                     </div>
                     
-                    <!-- 操作说明和图片 -->
+                    <!-- 操作说明和图片（一体化编辑区域） -->
                     <div class="ml-11">
-                      <!-- 内容编辑区域（文字+图片一体化） -->
-                      <div class="w-full rounded-lg border ${isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-white'} overflow-hidden focus-within:ring-2 focus-within:ring-purple-500"
-                           onclick="planner.setFocusedStep('${step.id}')">
-                        <!-- 文本输入区域 -->
-                        <textarea onchange="planner.updateStepContent('${step.id}', 'content', this.value)"
-                                  onfocus="planner.setFocusedStep('${step.id}')"
-                                  class="w-full px-3 py-2 text-sm ${isDark ? 'bg-transparent text-gray-100' : 'bg-transparent text-gray-800'} focus:outline-none resize-none"
-                                  rows="3"
-                                  placeholder="输入操作说明...">${step.content}</textarea>
-                        
-                        <!-- 图片显示区域（在文字下方） -->
-                        ${step.imageUrl ? `
-                          <div class="relative p-2 ${isDark ? 'bg-gray-750' : 'bg-gray-50'} border-t ${isDark ? 'border-gray-600' : 'border-gray-200'}">
-                            <img src="${step.imageUrl}" alt="步骤图片" class="max-w-full max-h-40 object-contain rounded mx-auto">
-                            <button onclick="event.stopPropagation(); planner.removeStepImage('${step.id}')"
-                                    class="absolute top-1 right-1 p-1 bg-red-500 hover:bg-red-600 rounded-full transition-colors shadow-sm">
-                              <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                              </svg>
-                            </button>
-                          </div>
-                        ` : ''}
-                      </div>
+                      <!-- contenteditable 编辑区域，支持文字和图片混排 -->
+                      <div contenteditable="true"
+                           id="step-content-${step.id}"
+                           data-step-id="${step.id}"
+                           class="w-full min-h-[80px] px-3 py-2 text-sm rounded-lg border ${isDark ? 'border-gray-600 bg-gray-800 text-gray-100' : 'border-gray-200 bg-white text-gray-800'} focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none overflow-auto"
+                           onfocus="planner.setFocusedStep('${step.id}')"
+                           onblur="planner.saveStepContentFromEditable('${step.id}')"
+                           oninput="planner.onStepContentInput('${step.id}')"
+                           placeholder="输入操作说明...">${step.content}${step.imageUrl ? `<img src="${step.imageUrl}" class="inline-image" data-image-id="${step.id}" style="max-width:100%;max-height:150px;display:block;margin-top:8px;border-radius:8px;cursor:pointer;" onclick="event.stopPropagation(); planner.showImageActions('${step.id}')">` : ''}</div>
                       
                       <!-- 图片操作按钮 -->
                       <div class="mt-2 flex gap-2">
@@ -5195,44 +5291,21 @@ class DailyPlanner {
   private updateStepImage(stepId: string, imageUrl: string): void {
     if (!this.currentGuide) return;
     
-    // 先保存当前文本框中的值（防止文字丢失）
-    this.saveCurrentTextareaValue(stepId);
+    // 先保存当前编辑区域中的内容
+    this.saveStepContentFromEditable(stepId);
     
-    const step = this.currentGuide.steps.find(s => s.id === stepId);
-    if (step) {
-      step.imageUrl = imageUrl;
-      this.saveCurrentGuide();
-      this.render();
-    }
+    // 插入图片到编辑区域
+    this.insertImageToStep(stepId, imageUrl);
   }
   
-  // 保存当前文本框中的值
+  // 保存当前编辑区域中的值（兼容旧的调用）
   private saveCurrentTextareaValue(stepId: string): void {
-    if (!this.currentGuide) return;
-    
-    // 查找对应的 textarea 元素
-    const textarea = document.querySelector(`[data-step-id="${stepId}"] textarea`) as HTMLTextAreaElement;
-    if (textarea) {
-      const step = this.currentGuide.steps.find(s => s.id === stepId);
-      if (step && textarea.value !== step.content) {
-        step.content = textarea.value;
-      }
-    }
+    this.saveStepContentFromEditable(stepId);
   }
 
   // 移除步骤图片
   public removeStepImage(stepId: string): void {
-    if (!this.currentGuide) return;
-    
-    // 先保存当前文本框中的值（防止文字丢失）
-    this.saveCurrentTextareaValue(stepId);
-    
-    const step = this.currentGuide.steps.find(s => s.id === stepId);
-    if (step) {
-      step.imageUrl = undefined;
-      this.saveCurrentGuide();
-      this.render();
-    }
+    this.removeStepImageFromEditor(stepId);
   }
 
   // 触发截图（监听粘贴事件）
