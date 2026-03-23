@@ -2114,6 +2114,15 @@ class DailyPlanner {
     this.editingGuideId = '';
     this.render();
   }
+  
+  // 关闭知识库
+  public closeKnowledgeBase(): void {
+    this.showKnowledgeBase = false;
+    this.currentGuide = null;
+    this.editingGuideId = '';
+    // 注意：不恢复 selectedDate，因为用户已经主动关闭了知识库
+    this.render();
+  }
 
   // 获取周标识（如 "2024-W01"），支持偏移量
   private getWeekKey(offset: number = 0): string {
@@ -3402,7 +3411,9 @@ class DailyPlanner {
   // 鼠标悬停日期（临时显示）
   private hoverDate(date: Date): void {
     // 弹窗打开时，不响应悬停事件
-    if (this.showStatsModal || this.showCopyModal || this.showThemeMenu) return;
+    if (this.showStatsModal || this.showCopyModal || this.showThemeMenu || 
+        this.showKnowledgeBase || this.showWeeklySummary || this.showMonthlySummary || 
+        this.showYearlyStats || this.showQuadrantView) return;
 
     // 只有当没有固定选择的日期时，悬停才生效
     if (!this.selectedDate) {
@@ -3658,15 +3669,14 @@ class DailyPlanner {
 
     // 当打开统计弹窗时，清除悬停状态并关闭其他弹窗/面板
     if (this.showStatsModal) {
-      if (!this.selectedDate) {
-        this.hoveredDate = null;
-      }
+      this.hoveredDate = null;
       // 关闭其他弹窗
       this.showCopyModal = false;
       this.showThemeMenu = false;
       this.showQuadrantView = false;
-      // 关闭任务面板
+      // 关闭任务面板并清除选中日期
       this.showTaskPanel = false;
+      this.selectedDate = null;
       // 关闭知识库
       this.showKnowledgeBase = false;
       this.currentGuide = null;
@@ -3685,8 +3695,9 @@ class DailyPlanner {
       this.showCopyModal = false;
       this.showThemeMenu = false;
       this.hoveredDate = null;
-      // 关闭任务面板
+      // 关闭任务面板并清除选中日期
       this.showTaskPanel = false;
+      this.selectedDate = null;
       // 关闭知识库
       this.showKnowledgeBase = false;
       this.currentGuide = null;
@@ -5328,13 +5339,19 @@ class DailyPlanner {
   // 打开知识库（关闭其他面板）
   public openKnowledgeBase(): void {
     this.showKnowledgeBase = true;
-    // 关闭任务面板
+    // 关闭任务面板并清除选中日期
     this.showTaskPanel = false;
+    this.selectedDate = null;
+    this.hoveredDate = null;
     // 关闭其他弹窗
     this.showStatsModal = false;
     this.showCopyModal = false;
     this.showThemeMenu = false;
     this.showQuadrantView = false;
+    this.showWeeklySummary = false;
+    this.showMonthlySummary = false;
+    this.showYearlyStats = false;
+    this.currentGuide = null;
     this.render();
   }
   
@@ -5342,6 +5359,8 @@ class DailyPlanner {
   public openWeeklySummary(): void {
     this.showWeeklySummary = true;
     this.showTaskPanel = false;
+    this.selectedDate = null;
+    this.hoveredDate = null;
     this.closeOtherPanels();
     this.render();
   }
@@ -5350,6 +5369,8 @@ class DailyPlanner {
   public openMonthlySummary(): void {
     this.showMonthlySummary = true;
     this.showTaskPanel = false;
+    this.selectedDate = null;
+    this.hoveredDate = null;
     this.closeOtherPanels();
     this.render();
   }
@@ -5358,6 +5379,8 @@ class DailyPlanner {
   public openYearlyStats(): void {
     this.showYearlyStats = true;
     this.showTaskPanel = false;
+    this.selectedDate = null;
+    this.hoveredDate = null;
     this.closeOtherPanels();
     this.render();
   }
@@ -5389,7 +5412,7 @@ class DailyPlanner {
     // 否则显示指南列表页面
     return `
       <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
-           onclick="planner.showKnowledgeBase = false; planner.render();">
+           onclick="planner.closeKnowledgeBase();">
         <div class="${bgClass} rounded-2xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
              onclick="event.stopPropagation()">
           
@@ -5419,7 +5442,7 @@ class DailyPlanner {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                 </svg>
               </button>
-              <button onclick="planner.showKnowledgeBase = false; planner.render();"
+              <button onclick="planner.closeKnowledgeBase();"
                       class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
                 <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -5520,7 +5543,7 @@ class DailyPlanner {
     
     return `
       <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
-           onclick="planner.showKnowledgeBase = false; planner.currentGuide = null; planner.editingGuideId = ''; planner.render();">
+           onclick="planner.closeKnowledgeBase();">
         <div class="${bgClass} rounded-2xl shadow-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
              onclick="event.stopPropagation()">
           
@@ -5541,7 +5564,7 @@ class DailyPlanner {
                 </svg>
                 保存指南
               </button>
-              <button onclick="planner.showKnowledgeBase = false; planner.currentGuide = null; planner.editingGuideId = ''; planner.render();"
+              <button onclick="planner.closeKnowledgeBase();"
                       class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
                 <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
