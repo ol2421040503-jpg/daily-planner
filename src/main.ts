@@ -1554,7 +1554,7 @@ class DailyPlanner {
     if (!this.currentGuide) return;
     const newStep: KnowledgeStep = {
       id: Date.now().toString(),
-      title: `步骤 ${this.currentGuide.steps.length + 1}`,
+      title: '',
       content: '',
       order: this.currentGuide.steps.length
     };
@@ -4929,10 +4929,10 @@ class DailyPlanner {
                    placeholder="输入指南名称...">
           </div>
           
-          <!-- 步骤列表 -->
+          <!-- 指南步骤 -->
           <div class="mb-6">
             <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold ${textClass}">步骤列表</h3>
+              <h3 class="text-lg font-semibold ${textClass}">指南步骤</h3>
               <span class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${this.currentGuide.steps.length} 个步骤</span>
             </div>
             
