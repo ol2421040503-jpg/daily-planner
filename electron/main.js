@@ -397,18 +397,24 @@ function sendNotification(title, body, data = {}) {
 // 检查纪念日提醒
 function checkAnniversaryReminders(anniversaries) {
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
   const reminders = [];
 
   anniversaries.forEach(anniversary => {
     let targetDate = new Date(today.getFullYear(), anniversary.month - 1, anniversary.day);
+    targetDate.setHours(0, 0, 0, 0);
     
     if (targetDate < today) {
       targetDate = new Date(today.getFullYear() + 1, anniversary.month - 1, anniversary.day);
+      targetDate.setHours(0, 0, 0, 0);
     }
 
     const diffDays = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
+    
+    // 当天或提前N天内提醒
+    const shouldRemind = diffDays === 0 || (diffDays > 0 && diffDays <= REMINDER_CONFIG.anniversary);
 
-    if (diffDays > 0 && diffDays <= REMINDER_CONFIG.anniversary) {
+    if (shouldRemind) {
       const reminderKey = `anniversary-${anniversary.id}-${targetDate.toISOString().split('T')[0]}`;
       
       if (!sentReminders.has(reminderKey)) {
@@ -443,7 +449,12 @@ function checkTaskReminders(tasks) {
       const priority = task.priority || 'medium';
       const reminderDays = REMINDER_CONFIG[priority];
 
-      if (diffDays > 0 && diffDays <= reminderDays) {
+      // 当天或提前N天内提醒
+      // diffDays = 0 表示今天，需要提醒
+      // diffDays > 0 && diffDays <= reminderDays 表示提前N天内
+      const shouldRemind = diffDays === 0 || (diffDays > 0 && diffDays <= reminderDays);
+
+      if (shouldRemind) {
         const reminderKey = `task-${task.id}-${dateStr}`;
         
         if (!sentReminders.has(reminderKey)) {
@@ -478,7 +489,9 @@ function handleReminderData(data) {
 
   anniversaryReminders.forEach(reminder => {
     const title = '🎉 纪念日提醒';
-    const body = `${reminder.name} 将在 ${reminder.daysLeft} 天后到来`;
+    const body = reminder.daysLeft === 0 
+      ? `今天是 ${reminder.name}！` 
+      : `${reminder.name} 将在 ${reminder.daysLeft} 天后到来`;
     sendNotification(title, body, { date: reminder.date });
     sentReminders.add(reminder.reminderKey);
   });
@@ -487,7 +500,9 @@ function handleReminderData(data) {
     const priorityLabel = reminder.priority === 'high' ? '【高优先】' : 
                           reminder.priority === 'medium' ? '【中优先】' : '【低优先】';
     const title = `📋 任务提醒 ${priorityLabel}`;
-    const body = `"${reminder.text}" 将在 ${reminder.daysLeft} 天后到期`;
+    const body = reminder.daysLeft === 0 
+      ? `"${reminder.text}" 今天到期！` 
+      : `"${reminder.text}" 将在 ${reminder.daysLeft} 天后到期`;
     sendNotification(title, body, { date: reminder.date });
     sentReminders.add(reminder.reminderKey);
   });
