@@ -13,53 +13,6 @@ import './index.css';
 import { Solar, Lunar } from 'lunar-javascript';
 
 // ==================== Electron API 类型声明 ====================
-declare global {
-  interface Window {
-    electronAPI?: {
-      // 窗口控制
-      minimizeToTray: () => void;
-      toggleMaximize: () => void;
-      closeToTray: () => void;
-      showWindow: () => void;
-      isMaximized: () => Promise<boolean>;
-      toggleAlwaysOnTop: () => Promise<boolean>;
-      isAlwaysOnTop: () => Promise<boolean>;
-      // 通知相关
-      sendNotification: (title: string, body: string, data?: Record<string, unknown>) => Promise<boolean>;
-      testNotification: () => void;
-      // 提醒相关
-      sendReminderData: (data: { tasks: DateTasks; anniversaries: Anniversary[] }) => void;
-      getReminderConfig: () => Promise<{ anniversary: number; high: number; medium: number; low: number }>;
-      onRequestReminderData: (callback: () => void) => void;
-      onNavigateToDate: (callback: (date: string) => void) => void;
-      // 任务进度相关
-      sendTaskProgress: (data: { completed: number; total: number }) => void;
-      onRequestTaskProgress: (callback: () => void) => void;
-      // 快捷操作相关
-      onAddTaskFocus: (callback: () => void) => void;
-      onJumpToToday: (callback: () => void) => void;
-      onShowStats: (callback: () => void) => void;
-      // 应用设置相关
-      getAppVersion: () => Promise<string>;
-      getAutoStartStatus: () => Promise<boolean>;
-      setAutoStart: (enable: boolean) => Promise<boolean>;
-      // 自动更新相关
-      checkForUpdate: () => Promise<void>;
-      downloadUpdate: () => Promise<void>;
-      installUpdate: () => Promise<void>;
-      onUpdateAvailable: (callback: (info: { version: string; releaseDate: string; releaseNotes?: string }) => void) => void;
-      onUpdateNotAvailable: (callback: () => void) => void;
-      onDownloadProgress: (callback: (progress: { percent: number; transferred: number; total: number }) => void) => void;
-      onUpdateDownloaded: (callback: (info: { version: string }) => void) => void;
-      onUpdateError: (callback: (error: string) => void) => void;
-      // 窗口准备完成
-      onWindowReady: (callback: () => void) => void;
-      // 清理
-      removeAllListeners: (channel: string) => void;
-    };
-  }
-}
-
 // ==================== 版本配置 ====================
 const APP_VERSION = '1.4.0';
 const VERSION_CHECK_URL = 'https://your-server.com/api/version'; // 替换为你的版本检查API

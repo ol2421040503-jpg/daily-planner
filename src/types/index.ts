@@ -145,6 +145,8 @@ declare global {
       sendReminderData: (data: { tasks: DateTasks; anniversaries: Anniversary[] }) => void;
       getReminderConfig: () => Promise<ReminderConfig>;
       onRequestReminderData: (callback: () => void) => void;
+      onCheckDayEndTasks: (callback: () => void) => void;
+      sendDayEndReminderData: (data: { pendingCount: number; overdueCount: number }) => void;
       onNavigateToDate: (callback: (date: string) => void) => void;
       // 任务进度相关
       sendTaskProgress: (data: { completed: number; total: number }) => void;
@@ -166,6 +168,8 @@ declare global {
       onDownloadProgress: (callback: (progress: { percent: number; transferred: number; total: number }) => void) => void;
       onUpdateDownloaded: (callback: (info: { version: string }) => void) => void;
       onUpdateError: (callback: (error: string) => void) => void;
+      // 窗口准备完成
+      onWindowReady: (callback: () => void) => void;
       // 清理
       removeAllListeners: (channel: string) => void;
     };
