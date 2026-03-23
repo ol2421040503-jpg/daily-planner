@@ -1596,6 +1596,75 @@ class DailyPlanner {
     localStorage.setItem('dailyPlannerKnowledgeGuides', JSON.stringify(this.knowledgeGuides));
   }
 
+  // 导出知识库
+  public exportKnowledgeBase(): void {
+    const data = {
+      version: '1.0',
+      exportDate: new Date().toISOString(),
+      guides: this.knowledgeGuides
+    };
+    
+    const jsonStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `知识库备份_${new Date().toLocaleDateString().replace(/\//g, '-')}.json`;
+    a.click();
+    
+    URL.revokeObjectURL(url);
+  }
+
+  // 导入知识库
+  public importKnowledgeBase(): void {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = JSON.parse(event.target?.result as string);
+          
+          // 验证数据格式
+          if (!data.guides || !Array.isArray(data.guides)) {
+            alert('无效的知识库文件格式');
+            return;
+          }
+          
+          // 询问用户是覆盖还是合并
+          const merge = confirm(`检测到 ${data.guides.length} 个指南。\n\n点击"确定"合并到现有知识库\n点击"取消"替换现有知识库`);
+          
+          if (merge) {
+            // 合并：添加新指南，跳过已存在的
+            const existingIds = new Set(this.knowledgeGuides.map(g => g.id));
+            const newGuides = data.guides.filter((g: KnowledgeGuide) => !existingIds.has(g.id));
+            this.knowledgeGuides.push(...newGuides);
+            alert(`成功导入 ${newGuides.length} 个新指南`);
+          } else {
+            // 替换
+            this.knowledgeGuides = data.guides;
+            alert(`成功导入 ${data.guides.length} 个指南`);
+          }
+          
+          this.saveKnowledgeGuides();
+          this.render();
+        } catch (err) {
+          alert('导入失败：文件格式错误');
+          console.error('导入失败:', err);
+        }
+      };
+      reader.readAsText(file);
+    };
+    
+    input.click();
+  }
+
   // 创建新指南
   public createNewGuide(): void {
     const newGuide: KnowledgeGuide = {
@@ -1747,9 +1816,15 @@ class DailyPlanner {
     img.className = 'inline-image';
     img.setAttribute('data-image-id', stepId);
     img.style.cssText = 'max-width:100%;max-height:150px;display:block;margin-top:8px;border-radius:8px;cursor:pointer;';
+    // 单击显示操作菜单
     img.onclick = (e) => {
       e.stopPropagation();
-      this.showImageActions(stepId);
+      this.showImageActions(stepId, imageUrl);
+    };
+    // 双击放大
+    img.ondblclick = (e) => {
+      e.stopPropagation();
+      this.enlargeImage(imageUrl);
     };
     
     // 插入到末尾
@@ -1764,10 +1839,22 @@ class DailyPlanner {
   }
 
   // 显示图片操作菜单
-  public showImageActions(stepId: string): void {
+  public showImageActions(stepId: string, imageUrl: string): void {
     if (confirm('是否删除此图片？')) {
       this.removeStepImageFromEditor(stepId);
     }
+  }
+  
+  // 放大图片
+  public enlargeImage(imageUrl: string): void {
+    this.enlargedImageUrl = imageUrl;
+    this.render();
+  }
+  
+  // 关闭图片放大
+  public closeEnlargedImage(): void {
+    this.enlargedImageUrl = '';
+    this.render();
   }
 
   // 从编辑区域删除图片
@@ -5035,12 +5122,30 @@ class DailyPlanner {
                 <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">管理你的步骤指南和教程</p>
               </div>
             </div>
-            <button onclick="planner.showKnowledgeBase = false; planner.render();"
-                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-              <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
+            <div class="flex items-center gap-2">
+              <!-- 导入按钮 -->
+              <button onclick="planner.importKnowledgeBase()"
+                      class="p-2 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} rounded-lg transition-colors"
+                      title="导入知识库">
+                <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                </svg>
+              </button>
+              <!-- 导出按钮 -->
+              <button onclick="planner.exportKnowledgeBase()"
+                      class="p-2 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} rounded-lg transition-colors"
+                      title="导出知识库">
+                <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+              </button>
+              <button onclick="planner.showKnowledgeBase = false; planner.render();"
+                      class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
           </div>
           
           <!-- 新建指南按钮 -->
@@ -5057,7 +5162,7 @@ class DailyPlanner {
             <div class="text-center py-12">
               <div class="text-6xl mb-4">📖</div>
               <p class="${isDark ? 'text-gray-400' : 'text-gray-500'}">还没有任何指南</p>
-              <p class="text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'} mt-2">点击上方按钮创建你的第一个指南</p>
+              <p class="text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'} mt-2">点击上方按钮创建你的第一个指南，或导入已有知识库</p>
             </div>
           ` : `
             <div class="space-y-3">
@@ -5088,6 +5193,32 @@ class DailyPlanner {
               `).join('')}
             </div>
           `}
+        </div>
+      </div>
+      ${this.generateEnlargedImageHTML()}
+    `;
+  }
+
+  // 生成图片放大弹窗 HTML
+  private generateEnlargedImageHTML(): string {
+    if (!this.enlargedImageUrl) return '';
+    
+    return `
+      <div class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[60]"
+           onclick="planner.closeEnlargedImage();">
+        <div class="relative max-w-[90vw] max-h-[90vh]">
+          <img src="${this.enlargedImageUrl}" 
+               class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+               onclick="event.stopPropagation();">
+          <!-- 关闭按钮 -->
+          <button onclick="planner.closeEnlargedImage();"
+                  class="absolute -top-3 -right-3 p-2 bg-white hover:bg-gray-100 rounded-full shadow-lg transition-colors">
+            <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+          <!-- 提示文字 -->
+          <p class="text-center text-white text-sm mt-3 opacity-70">双击图片放大查看 · 点击任意位置关闭</p>
         </div>
       </div>
     `;
@@ -5193,7 +5324,7 @@ class DailyPlanner {
                            onfocus="planner.setFocusedStep('${step.id}')"
                            onblur="planner.saveStepContentFromEditable('${step.id}')"
                            oninput="planner.onStepContentInput('${step.id}')"
-                           placeholder="输入操作说明...">${step.content}${step.imageUrl ? `<img src="${step.imageUrl}" class="inline-image" data-image-id="${step.id}" style="max-width:100%;max-height:150px;display:block;margin-top:8px;border-radius:8px;cursor:pointer;" onclick="event.stopPropagation(); planner.showImageActions('${step.id}')">` : ''}</div>
+                           placeholder="输入操作说明...">${step.content}${step.imageUrl ? `<img src="${step.imageUrl}" class="inline-image" data-image-id="${step.id}" style="max-width:100%;max-height:150px;display:block;margin-top:8px;border-radius:8px;cursor:pointer;" onclick="event.stopPropagation(); planner.showImageActions('${step.id}', '${step.imageUrl}')" ondblclick="event.stopPropagation(); planner.enlargeImage('${step.imageUrl}')">` : ''}</div>
                       
                       <!-- 图片操作按钮 -->
                       <div class="mt-2 flex gap-2">
@@ -5225,6 +5356,7 @@ class DailyPlanner {
           </button>
         </div>
       </div>
+      ${this.generateEnlargedImageHTML()}
     `;
   }
 
@@ -5326,6 +5458,9 @@ class DailyPlanner {
   
   // 当前聚焦的步骤ID（用于粘贴图片）
   private focusedStepId: string = '';
+  
+  // 图片放大弹窗
+  private enlargedImageUrl: string = '';
 
   // 处理粘贴图片
   public handlePaste(event: ClipboardEvent): void {
