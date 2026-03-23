@@ -438,13 +438,25 @@ class DailyPlanner {
     }
   }
 
-  // 获取当前活动的步骤ID（最后一个步骤，如果没有步骤则返回空）
+  // 获取当前活动的步骤ID（优先使用聚焦的步骤，否则返回最后一个步骤）
   private getActiveStepId(): string {
     if (!this.currentGuide || this.currentGuide.steps.length === 0) {
       return '';
     }
-    // 返回最后一个步骤的ID
+    // 如果有聚焦的步骤，返回它
+    if (this.focusedStepId) {
+      const stepExists = this.currentGuide.steps.some(s => s.id === this.focusedStepId);
+      if (stepExists) {
+        return this.focusedStepId;
+      }
+    }
+    // 否则返回最后一个步骤的ID
     return this.currentGuide.steps[this.currentGuide.steps.length - 1].id;
+  }
+  
+  // 设置当前聚焦的步骤
+  public setFocusedStep(stepId: string): void {
+    this.focusedStepId = stepId;
   }
 
   // 从剪贴板读取图片到当前活动的步骤
@@ -5030,6 +5042,7 @@ class DailyPlanner {
                        ondragover="planner.handleDragOver(event)"
                        ondrop="planner.handleDrop(event, '${step.id}')"
                        ondragend="planner.handleDragEnd(event)"
+                       onclick="planner.setFocusedStep('${step.id}')"
                        data-step-id="${step.id}">
                     <!-- 步骤头部 -->
                     <div class="flex items-center justify-between mb-3">
@@ -5208,6 +5221,9 @@ class DailyPlanner {
 
   // 截图步骤ID（临时存储）
   private screenshotStepId: string = '';
+  
+  // 当前聚焦的步骤ID（用于粘贴图片）
+  private focusedStepId: string = '';
 
   // 处理粘贴图片
   public handlePaste(event: ClipboardEvent): void {
