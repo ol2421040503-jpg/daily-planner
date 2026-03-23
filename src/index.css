@@ -148,6 +148,16 @@ body {
   box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.5);
 }
 
+/* 图片容器hover显示删除按钮 */
+.image-wrapper:hover .image-delete-btn {
+  opacity: 1;
+}
+
+.image-delete-btn {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
 /* 保存状态动画 */
 @keyframes fadeIn {
   from {

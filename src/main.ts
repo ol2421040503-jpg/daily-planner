@@ -1878,15 +1878,15 @@ class DailyPlanner {
     img.className = 'inline-image';
     img.setAttribute('data-image-id', stepId);
     img.style.cssText = 'max-width:100%;max-height:150px;display:block;margin-top:8px;border-radius:8px;cursor:pointer;';
-    // 单击显示操作菜单
+    // 单击不做操作（阻止冒泡）
     img.onclick = (e) => {
       e.stopPropagation();
-      this.showImageActions(stepId, imageUrl);
+      // 不执行任何操作，双击才放大
     };
     // 双击放大
     img.ondblclick = (e) => {
       e.stopPropagation();
-      this.enlargeImage(imageUrl);
+      this.enlargeImage(imageUrl, stepId);
     };
     
     // 插入到末尾
@@ -1900,23 +1900,34 @@ class DailyPlanner {
     this.saveStepContentFromEditable(stepId);
   }
 
-  // 显示图片操作菜单
+  // 显示图片操作菜单（已废弃，改为在放大弹窗中删除）
   public showImageActions(stepId: string, imageUrl: string): void {
-    if (confirm('是否删除此图片？')) {
-      this.removeStepImageFromEditor(stepId);
-    }
+    // 直接放大图片
+    this.enlargeImage(imageUrl, stepId);
   }
   
   // 放大图片
-  public enlargeImage(imageUrl: string): void {
+  public enlargeImage(imageUrl: string, stepId?: string): void {
     this.enlargedImageUrl = imageUrl;
+    this.enlargedImageStepId = stepId || '';
     this.render();
   }
   
   // 关闭图片放大
   public closeEnlargedImage(): void {
     this.enlargedImageUrl = '';
+    this.enlargedImageStepId = '';
     this.render();
+  }
+  
+  // 从放大弹窗删除图片
+  public deleteEnlargedImage(): void {
+    if (this.enlargedImageStepId) {
+      this.removeStepImageFromEditor(this.enlargedImageStepId);
+      this.enlargedImageUrl = '';
+      this.enlargedImageStepId = '';
+      this.render();
+    }
   }
 
   // 从编辑区域删除图片
@@ -5279,8 +5290,18 @@ class DailyPlanner {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
           </button>
+          <!-- 删除按钮（仅当有stepId时显示） -->
+          ${this.enlargedImageStepId ? `
+            <button onclick="planner.deleteEnlargedImage();"
+                    class="absolute -top-3 -left-3 p-2 bg-red-500 hover:bg-red-600 rounded-full shadow-lg transition-colors"
+                    title="删除图片">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+          ` : ''}
           <!-- 提示文字 -->
-          <p class="text-center text-white text-sm mt-3 opacity-70">双击图片放大查看 · 点击任意位置关闭</p>
+          <p class="text-center text-white text-sm mt-3 opacity-70">点击任意位置关闭${this.enlargedImageStepId ? ' · 左上角删除' : ''}</p>
         </div>
       </div>
     `;
@@ -5395,7 +5416,14 @@ class DailyPlanner {
                            onfocus="planner.setFocusedStep('${step.id}')"
                            onblur="planner.saveStepContentFromEditable('${step.id}')"
                            oninput="planner.onStepContentInput('${step.id}')"
-                           placeholder="输入操作说明...">${step.content}${step.imageUrl ? `<img src="${step.imageUrl}" class="inline-image" data-image-id="${step.id}" style="max-width:100%;max-height:150px;display:block;margin-top:8px;border-radius:8px;cursor:pointer;" onclick="event.stopPropagation(); planner.showImageActions('${step.id}', '${step.imageUrl}')" ondblclick="event.stopPropagation(); planner.enlargeImage('${step.imageUrl}')">` : ''}</div>
+                           placeholder="输入操作说明...">${step.content}${step.imageUrl ? `<div class="relative inline-block image-wrapper" style="margin-top:8px;">
+              <img src="${step.imageUrl}" class="inline-image" data-image-id="${step.id}" style="max-width:100%;max-height:150px;display:block;border-radius:8px;cursor:pointer;" onclick="event.stopPropagation();" ondblclick="event.stopPropagation(); planner.enlargeImage('${step.imageUrl}', '${step.id}')">
+              <button class="absolute top-1 right-1 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 transition-opacity image-delete-btn" style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;" onclick="event.stopPropagation(); planner.removeStepImageFromEditor('${step.id}')" title="删除图片">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>` : ''}</div>
                       
                       <!-- 图片操作按钮 -->
                       <div class="mt-2 flex gap-2">
@@ -5532,6 +5560,7 @@ class DailyPlanner {
   
   // 图片放大弹窗
   private enlargedImageUrl: string = '';
+  private enlargedImageStepId: string = '';  // 放大图片对应的步骤ID
   
   // 保存状态提示
   private saveStatus: string = '';  // 'saving' | 'saved' | ''
