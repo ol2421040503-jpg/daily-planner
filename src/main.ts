@@ -11,6 +11,15 @@
 
 import './index.css';
 import { Solar, Lunar } from 'lunar-javascript';
+import JSZip from 'jszip';
+
+// ==================== 图片压缩配置 ====================
+const IMAGE_COMPRESSION_CONFIG = {
+  maxWidth: 1920,        // 最大宽度
+  maxHeight: 1080,       // 最大高度
+  quality: 0.7,          // 压缩质量 (0-1)
+  mimeType: 'image/jpeg' // 输出格式
+};
 
 // ==================== 版本配置 ====================
 const APP_VERSION = '1.4.1';
@@ -1688,12 +1697,79 @@ class DailyPlanner {
     })();
   }
 
-  // 导出知识库
-  public exportKnowledgeBase(): void {
+  // 导出知识库（ZIP格式，自动压缩）
+  public async exportKnowledgeBase(): Promise<void> {
     const data = {
-      version: '1.0',
+      version: '2.0',
       exportDate: new Date().toISOString(),
-      guides: this.knowledgeGuides
+      guides: this.knowledgeGuides,
+      compressed: true
+    };
+    
+    // 创建 ZIP 文件
+    const zip = new JSZip();
+    
+    // 添加 JSON 数据
+    const jsonStr = JSON.stringify(data, null, 2);
+    zip.file('knowledge.json', jsonStr);
+    
+    // 添加说明文件
+    const readme = `# 知识库备份
+
+导出时间: ${new Date().toLocaleString()}
+指南数量: ${this.knowledgeGuides.length}
+版本: 2.0
+
+## 导入说明
+1. 在知识库页面点击"导入"按钮
+2. 选择此 ZIP 文件
+3. 选择合并或替换现有数据
+
+## 数据格式
+- knowledge.json: 知识库数据（包含图片的base64编码）
+- 图片已在导出时自动压缩
+
+## 兼容性
+- 支持 v1.0 和 v2.0 格式的 JSON 文件导入
+- 推荐使用 ZIP 格式以获得最佳压缩效果
+`;
+    zip.file('README.txt', readme);
+    
+    try {
+      // 生成 ZIP 文件
+      const content = await zip.generateAsync({ 
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 9 }  // 最高压缩级别
+      });
+      
+      // 下载文件
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `知识库备份_${new Date().toLocaleDateString().replace(/\//g, '-')}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      // 显示压缩效果
+      const jsonSize = Math.round(jsonStr.length / 1024);
+      const zipSize = Math.round(content.size / 1024);
+      const ratio = Math.round((1 - zipSize / jsonSize) * 100);
+      console.log(`[导出] JSON: ${jsonSize}KB, ZIP: ${zipSize}KB, 压缩率: ${ratio}%`);
+    } catch (error) {
+      console.error('[导出] ZIP压缩失败，回退到JSON格式:', error);
+      // 回退到普通 JSON 导出
+      this.exportKnowledgeBaseAsJson();
+    }
+  }
+  
+  // 导出知识库（JSON格式，备用）
+  private exportKnowledgeBaseAsJson(): void {
+    const data = {
+      version: '2.0',
+      exportDate: new Date().toISOString(),
+      guides: this.knowledgeGuides,
+      compressed: true
     };
     
     const jsonStr = JSON.stringify(data, null, 2);
@@ -1708,50 +1784,70 @@ class DailyPlanner {
     URL.revokeObjectURL(url);
   }
 
-  // 导入知识库
+  // 导入知识库（支持ZIP和JSON）
   public importKnowledgeBase(): void {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json';
+    input.accept = '.zip,.json';
     
-    input.onchange = (e) => {
+    input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const data = JSON.parse(event.target?.result as string);
+      try {
+        let data: { version: string; guides: KnowledgeGuide[]; compressed?: boolean };
+        
+        if (file.name.endsWith('.zip')) {
+          // 处理 ZIP 文件
+          const zip = await JSZip.loadAsync(file);
+          const jsonFile = zip.file('knowledge.json');
           
-          // 验证数据格式
-          if (!data.guides || !Array.isArray(data.guides)) {
-            alert('无效的知识库文件格式');
+          if (!jsonFile) {
+            alert('ZIP文件中没有找到 knowledge.json');
             return;
           }
           
-          // 询问用户是覆盖还是合并
-          const merge = confirm(`检测到 ${data.guides.length} 个指南。\n\n点击"确定"合并到现有知识库\n点击"取消"替换现有知识库`);
-          
-          if (merge) {
-            // 合并：添加新指南，跳过已存在的
-            const existingIds = new Set(this.knowledgeGuides.map(g => g.id));
-            const newGuides = data.guides.filter((g: KnowledgeGuide) => !existingIds.has(g.id));
-            this.knowledgeGuides.push(...newGuides);
-            alert(`成功导入 ${newGuides.length} 个新指南`);
-          } else {
-            // 替换
-            this.knowledgeGuides = data.guides;
-            alert(`成功导入 ${data.guides.length} 个指南`);
-          }
-          
-          this.saveKnowledgeGuides();
-          this.render();
-        } catch (err) {
-          alert('导入失败：文件格式错误');
-          console.error('导入失败:', err);
+          const jsonStr = await jsonFile.async('string');
+          data = JSON.parse(jsonStr);
+          console.log('[导入] 从ZIP文件导入成功');
+        } else {
+          // 处理 JSON 文件
+          const reader = new FileReader();
+          const jsonStr = await new Promise<string>((resolve, reject) => {
+            reader.onload = (event) => resolve(event.target?.result as string);
+            reader.onerror = reject;
+            reader.readAsText(file);
+          });
+          data = JSON.parse(jsonStr);
         }
-      };
-      reader.readAsText(file);
+        
+        // 验证数据格式
+        if (!data.guides || !Array.isArray(data.guides)) {
+          alert('无效的知识库文件格式');
+          return;
+        }
+        
+        // 询问用户是覆盖还是合并
+        const merge = confirm(`检测到 ${data.guides.length} 个指南。\n\n点击"确定"合并到现有知识库\n点击"取消"替换现有知识库`);
+        
+        if (merge) {
+          // 合并：添加新指南，跳过已存在的
+          const existingIds = new Set(this.knowledgeGuides.map(g => g.id));
+          const newGuides = data.guides.filter((g: KnowledgeGuide) => !existingIds.has(g.id));
+          this.knowledgeGuides.push(...newGuides);
+          alert(`成功导入 ${newGuides.length} 个新指南`);
+        } else {
+          // 替换
+          this.knowledgeGuides = data.guides;
+          alert(`成功导入 ${data.guides.length} 个指南`);
+        }
+        
+        this.saveKnowledgeGuides();
+        this.render();
+      } catch (err) {
+        alert('导入失败：文件格式错误');
+        console.error('导入失败:', err);
+      }
     };
     
     input.click();
@@ -5561,14 +5657,80 @@ class DailyPlanner {
   }
 
   // 更新步骤图片
-  private updateStepImage(stepId: string, imageUrl: string): void {
+  private async updateStepImage(stepId: string, imageUrl: string): Promise<void> {
     if (!this.currentGuide) return;
+    
+    // 先压缩图片
+    const compressedImage = await this.compressImage(imageUrl);
     
     // 先保存当前编辑区域中的内容
     this.saveStepContentFromEditable(stepId);
     
     // 插入图片到编辑区域
-    this.insertImageToStep(stepId, imageUrl);
+    this.insertImageToStep(stepId, compressedImage);
+  }
+  
+  // 压缩图片
+  private compressImage(base64: string): Promise<string> {
+    return new Promise((resolve) => {
+      // 如果不是 base64 图片，直接返回
+      if (!base64.startsWith('data:image')) {
+        resolve(base64);
+        return;
+      }
+      
+      const img = new Image();
+      img.onload = () => {
+        // 计算压缩后的尺寸
+        let width = img.width;
+        let height = img.height;
+        
+        // 如果图片尺寸超过限制，按比例缩放
+        if (width > IMAGE_COMPRESSION_CONFIG.maxWidth || height > IMAGE_COMPRESSION_CONFIG.maxHeight) {
+          const ratio = Math.min(
+            IMAGE_COMPRESSION_CONFIG.maxWidth / width,
+            IMAGE_COMPRESSION_CONFIG.maxHeight / height
+          );
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        
+        // 创建 canvas 进行压缩
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          resolve(base64);
+          return;
+        }
+        
+        // 绘制图片
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // 转换为压缩后的 base64
+        const compressedBase64 = canvas.toDataURL(
+          IMAGE_COMPRESSION_CONFIG.mimeType,
+          IMAGE_COMPRESSION_CONFIG.quality
+        );
+        
+        // 计算压缩比
+        const originalSize = Math.round(base64.length / 1024);
+        const compressedSize = Math.round(compressedBase64.length / 1024);
+        const ratio_percent = Math.round((1 - compressedSize / originalSize) * 100);
+        console.log(`[图片压缩] ${originalSize}KB -> ${compressedSize}KB (压缩 ${ratio_percent}%)`);
+        
+        resolve(compressedBase64);
+      };
+      
+      img.onerror = () => {
+        console.error('[图片压缩] 加载图片失败');
+        resolve(base64);
+      };
+      
+      img.src = base64;
+    });
   }
   
   // 保存当前编辑区域中的值（兼容旧的调用）

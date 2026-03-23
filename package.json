@@ -20,6 +20,7 @@
     "@supabase/supabase-js": "2.95.3",
     "dotenv": "^17.2.3",
     "electron-updater": "^6.1.7",
+    "jszip": "^3.10.1",
     "lunar-javascript": "^1.7.7"
   },
   "devDependencies": {
