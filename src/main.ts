@@ -263,6 +263,12 @@ class DailyPlanner {
   private showYearlyStats: boolean = false;  // 是否显示年度统计
   private showWeeklySummary: boolean = false;  // 是否显示周总结
   private showMonthlySummary: boolean = false;  // 是否显示月总结
+  // 总结文字存储（按年-周/年-月/年 格式存储）
+  private summaryNotes: {
+    weekly: Record<string, string>;   // key: "2024-W01" 格式
+    monthly: Record<string, string>;  // key: "2024-01" 格式
+    yearly: Record<string, string>;   // key: "2024" 格式
+  } = { weekly: {}, monthly: {}, yearly: {} };
   private showQuadrantView: boolean = false;  // 是否显示四象限视图
   private quadrantFilter: 'year' | 'month' | 'custom' = 'month';  // 四象限时间筛选
   private quadrantStartDate: string = '';  // 自定义开始日期
@@ -320,6 +326,7 @@ class DailyPlanner {
     this.customTags = this.loadCustomTags();  // 加载自定义标签
     this.tagOrder = this.loadTagOrder();  // 加载标签排序
     this.deletedDefaultTagIds = new Set(this.loadDeletedDefaultTagIds());  // 加载已删除的预设标签
+    this.summaryNotes = this.loadSummaryNotes();  // 加载总结文字
     this.monthlyFilter = 'all';
     this.showStatsModal = false;
     this.currentTheme = this.loadTheme();
@@ -1399,6 +1406,59 @@ class DailyPlanner {
   // 保存任务到 localStorage
   private saveTasks(): void {
     localStorage.setItem('dailyPlannerTasks', JSON.stringify(this.tasks));
+  }
+
+  // 加载总结文字
+  private loadSummaryNotes(): { weekly: Record<string, string>; monthly: Record<string, string>; yearly: Record<string, string> } {
+    const saved = localStorage.getItem('dailyPlannerSummaryNotes');
+    return saved ? JSON.parse(saved) : { weekly: {}, monthly: {}, yearly: {} };
+  }
+
+  // 保存总结文字
+  private saveSummaryNotes(): void {
+    localStorage.setItem('dailyPlannerSummaryNotes', JSON.stringify(this.summaryNotes));
+  }
+
+  // 获取当前周标识（如 "2024-W01"）
+  private getWeekKey(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const oneJan = new Date(year, 0, 1);
+    const days = Math.floor((now.getTime() - oneJan.getTime()) / 86400000);
+    const weekNum = Math.ceil((days + oneJan.getDay() + 1) / 7);
+    return `${year}-W${String(weekNum).padStart(2, '0')}`;
+  }
+
+  // 获取当前月标识（如 "2024-01"）
+  private getMonthKey(): string {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  // 获取当前年标识（如 "2024"）
+  private getYearKey(): string {
+    return String(this.currentDate.getFullYear());
+  }
+
+  // 保存周总结文字
+  public saveWeeklySummaryNote(note: string): void {
+    const key = this.getWeekKey();
+    this.summaryNotes.weekly[key] = note;
+    this.saveSummaryNotes();
+  }
+
+  // 保存月总结文字
+  public saveMonthlySummaryNote(note: string): void {
+    const key = this.getMonthKey();
+    this.summaryNotes.monthly[key] = note;
+    this.saveSummaryNotes();
+  }
+
+  // 保存年度总结文字
+  public saveYearlySummaryNote(note: string): void {
+    const key = this.getYearKey();
+    this.summaryNotes.yearly[key] = note;
+    this.saveSummaryNotes();
   }
 
   // 加载主题设置
@@ -4515,6 +4575,16 @@ class DailyPlanner {
             <div class="font-medium">${motivation.text}</div>
           </div>
           
+          <!-- 周总结文字区域 -->
+          <div class="mt-4">
+            <h3 class="text-sm font-semibold ${textClass} mb-2">📝 本周感想</h3>
+            <textarea 
+              class="w-full h-24 p-3 rounded-xl border ${isDark ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400' : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400'} focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              placeholder="写下这周的总结感想..."
+              onchange="planner.saveWeeklySummaryNote(this.value)"
+            >${this.summaryNotes.weekly[this.getWeekKey()] || ''}</textarea>
+          </div>
+          
           <!-- 成就徽章 -->
           ${stats.streakDays >= 7 ? `
             <div class="mt-4 flex items-center justify-center gap-2">
@@ -4675,6 +4745,16 @@ class DailyPlanner {
           <!-- 激励文案 -->
           <div class="p-4 rounded-xl bg-gradient-to-r ${motivation.color} text-white text-center">
             <div class="font-medium">${motivation.text}</div>
+          </div>
+          
+          <!-- 月总结文字区域 -->
+          <div class="mt-4">
+            <h3 class="text-sm font-semibold ${textClass} mb-2">📝 本月感想</h3>
+            <textarea 
+              class="w-full h-24 p-3 rounded-xl border ${isDark ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400' : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400'} focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+              placeholder="写下这个月的总结感想..."
+              onchange="planner.saveMonthlySummaryNote(this.value)"
+            >${this.summaryNotes.monthly[this.getMonthKey()] || ''}</textarea>
           </div>
         </div>
       </div>
@@ -4905,6 +4985,16 @@ class DailyPlanner {
             ${stats.longestStreak >= 30 ? `<span class="px-3 py-1.5 bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 rounded-full text-sm font-medium shadow-sm">🔥 坚持一个月</span>` : ''}
             ${stats.longestStreak >= 100 ? `<span class="px-3 py-1.5 bg-gradient-to-r from-red-100 to-red-200 text-red-800 rounded-full text-sm font-medium shadow-sm">💎 坚持百日</span>` : ''}
             ${stats.total >= 1000 ? `<span class="px-3 py-1.5 bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 rounded-full text-sm font-medium shadow-sm">📊 千任务达成</span>` : ''}
+          </div>
+          
+          <!-- 年度总结文字区域 -->
+          <div class="mt-4">
+            <h3 class="text-sm font-semibold ${textClass} mb-2">📝 年度感想</h3>
+            <textarea 
+              class="w-full h-24 p-3 rounded-xl border ${isDark ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400' : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400'} focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+              placeholder="写下这一年的总结感想..."
+              onchange="planner.saveYearlySummaryNote(this.value)"
+            >${this.summaryNotes.yearly[this.getYearKey()] || ''}</textarea>
           </div>
         </div>
       </div>
