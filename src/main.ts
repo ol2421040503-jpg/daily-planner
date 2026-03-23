@@ -5007,10 +5007,10 @@ class DailyPlanner {
                           <span>🖼️</span>
                           <span>上传图片</span>
                         </button>
-                        <button onclick="planner.pasteImageFromClipboard('${step.id}')"
-                                class="px-2 py-1 text-xs ${isDark ? 'bg-purple-600 hover:bg-purple-500 text-white' : 'bg-purple-500 hover:bg-purple-400 text-white'} rounded transition-colors flex items-center gap-1">
-                          <span>📋</span>
-                          <span>粘贴图片</span>
+                        <button onclick="planner.triggerScreenshot('${step.id}')"
+                                class="px-2 py-1 text-xs ${isDark ? 'bg-gray-600 hover:bg-gray-500 text-gray-200' : 'bg-gray-200 hover:bg-gray-300 text-gray-600'} rounded transition-colors flex items-center gap-1">
+                          <span>📷</span>
+                          <span>截图(F1)</span>
                         </button>
                       </div>
                     </div>
@@ -5119,27 +5119,12 @@ class DailyPlanner {
     // 设置当前步骤ID，等待F1快捷键触发粘贴
     this.screenshotStepId = stepId;
     
-    // 重新渲染以显示选中状态
-    this.render();
-    
-    // 延迟后添加高亮效果
-    setTimeout(() => {
-      const stepEl = document.querySelector(`[data-step-id="${stepId}"]`);
-      if (stepEl) {
-        stepEl.classList.add('ring-2', 'ring-purple-500', 'ring-offset-2');
-      }
-    }, 50);
-  }
-
-  // 清除截图选中状态
-  public clearScreenshotSelection(): void {
-    if (this.screenshotStepId) {
-      const stepEl = document.querySelector(`[data-step-id="${this.screenshotStepId}"]`);
-      if (stepEl) {
-        stepEl.classList.remove('ring-2', 'ring-purple-500', 'ring-offset-2');
-      }
+    // 视觉反馈
+    const btn = event?.target as HTMLElement;
+    if (btn) {
+      btn.classList.add('ring-2', 'ring-purple-500');
+      setTimeout(() => btn.classList.remove('ring-2', 'ring-purple-500'), 2000);
     }
-    this.screenshotStepId = '';
   }
 
   // 截图步骤ID（临时存储）
@@ -5166,35 +5151,6 @@ class DailyPlanner {
         }
         break;
       }
-    }
-  }
-
-  // 直接从剪贴板粘贴图片到指定步骤
-  public async pasteImageFromClipboard(stepId: string): Promise<void> {
-    try {
-      // 使用 Clipboard API 读取图片
-      const clipboardItems = await navigator.clipboard.read();
-      
-      for (const item of clipboardItems) {
-        for (const type of item.types) {
-          if (type.startsWith('image/')) {
-            const blob = await item.getType(type);
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              const base64 = e.target?.result as string;
-              this.updateStepImage(stepId, base64);
-            };
-            reader.readAsDataURL(blob);
-            return;
-          }
-        }
-      }
-      
-      // 如果没有找到图片，提示用户
-      alert('剪贴板中没有图片！请先截图或复制图片。');
-    } catch (error) {
-      console.error('读取剪贴板失败:', error);
-      alert('无法读取剪贴板，请确保已授权剪贴板访问权限。\n\n使用方法：\n1. 先截图（如 Win+Shift+S）\n2. 或右键复制图片\n3. 然后点击"粘贴图片"按钮');
     }
   }
 
