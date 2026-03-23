@@ -185,5 +185,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 从文件加载知识库
   loadKnowledgeFile: () => {
     return ipcRenderer.invoke('load-knowledge-file');
+  },
+
+  // ==================== 截图功能 ====================
+  
+  // 开始截图
+  startScreenshot: () => {
+    return ipcRenderer.invoke('start-screenshot');
+  },
+
+  // 完成截图（由主进程调用）
+  onCompleteScreenshot: (callback) => {
+    ipcRenderer.on('screenshot-complete', (event, data) => callback(data));
+  },
+
+  // 取消截图
+  cancelScreenshot: () => {
+    return ipcRenderer.invoke('cancel-screenshot');
   }
 });

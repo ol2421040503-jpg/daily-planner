@@ -410,23 +410,54 @@ class DailyPlanner {
       }
     });
     
-    // 监听Ctrl+B快捷键（截图粘贴）
+    // 监听Ctrl+B快捷键（真正的截图功能）
     document.addEventListener('keydown', (e) => {
       // Ctrl+B 或 Cmd+B（Mac）
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
         // 只有在编辑指南时才触发
         if (this.showKnowledgeBase && this.currentGuide) {
           e.preventDefault();
-          // 如果有指定步骤ID，读取到指定步骤
-          if (this.screenshotStepId) {
-            this.readClipboardImage();
-          } else {
-            // 否则读取到当前活动的步骤
-            this.readClipboardToActiveStep();
-          }
+          // 调用真正的截图功能
+          this.startRealScreenshot();
         }
       }
     });
+    
+    // 监听截图完成事件
+    if (window.electronAPI) {
+      window.electronAPI.onCompleteScreenshot((data) => {
+        if (data.success && data.imageData) {
+          // 如果有指定步骤ID，保存到指定步骤
+          if (this.screenshotStepId) {
+            this.updateStepImage(this.screenshotStepId, data.imageData);
+            this.screenshotStepId = '';
+          } else {
+            // 否则保存到当前活动的步骤
+            const activeStepId = this.getActiveStepId();
+            if (activeStepId) {
+              this.updateStepImage(activeStepId, data.imageData);
+            }
+          }
+        }
+      });
+    }
+  }
+
+  // 启动真正的截图功能
+  private async startRealScreenshot(): Promise<void> {
+    if (!window.electronAPI) {
+      console.error('Electron API 不可用');
+      return;
+    }
+    
+    try {
+      const result = await window.electronAPI.startScreenshot();
+      if (!result.success) {
+        console.error('截图失败:', result.error);
+      }
+    } catch (err) {
+      console.error('启动截图失败:', err);
+    }
   }
 
   // 从剪贴板读取图片到指定步骤
@@ -5794,7 +5825,7 @@ class DailyPlanner {
                         <button onclick="planner.triggerScreenshot('${step.id}')"
                                 class="px-2 py-1 text-xs ${isDark ? 'bg-gray-600 hover:bg-gray-500 text-gray-200' : 'bg-gray-200 hover:bg-gray-300 text-gray-600'} rounded transition-colors flex items-center gap-1">
                           <span>📷</span>
-                          <span>截图(Ctrl+B)</span>
+                          <span>截图</span>
                         </button>
                       </div>
                     </div>
@@ -5966,15 +5997,11 @@ class DailyPlanner {
 
   // 触发截图（监听粘贴事件）
   public triggerScreenshot(stepId: string): void {
-    // 设置当前步骤ID，等待Ctrl+B快捷键触发粘贴
+    // 设置当前步骤ID，截图完成后保存到此步骤
     this.screenshotStepId = stepId;
     
-    // 视觉反馈
-    const btn = event?.target as HTMLElement;
-    if (btn) {
-      btn.classList.add('ring-2', 'ring-purple-500');
-      setTimeout(() => btn.classList.remove('ring-2', 'ring-purple-500'), 2000);
-    }
+    // 直接启动截图功能
+    this.startRealScreenshot();
   }
 
   // 截图步骤ID（临时存储）

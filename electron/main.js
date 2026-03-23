@@ -6,7 +6,7 @@
  * @license MIT
  */
 
-const { app, BrowserWindow, Notification, ipcMain, Tray, Menu, nativeImage, globalShortcut } = require('electron');
+const { app, BrowserWindow, Notification, ipcMain, Tray, Menu, nativeImage, globalShortcut, desktopCapturer, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
@@ -708,6 +708,304 @@ ipcMain.handle('download-update', () => {
 ipcMain.handle('install-update', () => {
   installUpdate();
 });
+
+// ==================== 截图功能 ====================
+
+let screenshotWindow = null;
+
+// 开始截图
+ipcMain.handle('start-screenshot', async () => {
+  try {
+    // 获取所有显示器
+    const displays = screen.getAllDisplays();
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width, height } = primaryDisplay.workAreaSize;
+    
+    // 获取屏幕截图
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: { width: width * 2, height: height * 2 } // 高分辨率支持
+    });
+    
+    if (sources.length === 0) {
+      return { success: false, error: '无法获取屏幕截图' };
+    }
+    
+    // 创建全屏透明窗口用于选择区域
+    screenshotWindow = new BrowserWindow({
+      fullscreen: true,
+      transparent: true,
+      frame: false,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      webPreferences: {
+        nodeIntegration: true,
+        contextIsolation: false
+      }
+    });
+    
+    // 获取所有显示器的截图
+    const screenshots = sources.map(source => ({
+      thumbnail: source.thumbnail.toDataURL(),
+      displayId: source.display_id
+    }));
+    
+    // 加载截图选择页面
+    screenshotWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(generateScreenshotHTML(screenshots[0].thumbnail))}`);
+    
+    screenshotWindow.webContents.on('did-finish-load', () => {
+      screenshotWindow.webContents.send('screenshot-ready', screenshots[0].thumbnail);
+    });
+    
+    screenshotWindow.on('closed', () => {
+      screenshotWindow = null;
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('截图失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// 完成截图（裁剪并返回）
+ipcMain.handle('complete-screenshot', async (event, { imageData, rect }) => {
+  if (screenshotWindow) {
+    screenshotWindow.close();
+    screenshotWindow = null;
+  }
+  
+  // 发送截图数据到主窗口的渲染进程
+  if (mainWindow) {
+    mainWindow.webContents.send('screenshot-complete', { success: true, imageData });
+  }
+  
+  return { success: true, imageData };
+});
+
+// 取消截图
+ipcMain.handle('cancel-screenshot', () => {
+  if (screenshotWindow) {
+    screenshotWindow.close();
+    screenshotWindow = null;
+  }
+  return { success: true };
+});
+
+// 生成截图选择页面的 HTML
+function generateScreenshotHTML(thumbnail) {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          cursor: crosshair;
+          overflow: hidden;
+          background: transparent;
+        }
+        .screenshot-bg {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background-image: url('${thumbnail}');
+          background-size: cover;
+          background-position: top left;
+        }
+        .overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: rgba(0, 0, 0, 0.3);
+        }
+        .selection {
+          position: fixed;
+          border: 2px solid #00a8ff;
+          background: rgba(0, 168, 255, 0.1);
+          display: none;
+          pointer-events: none;
+        }
+        .toolbar {
+          position: fixed;
+          display: none;
+          background: white;
+          border-radius: 4px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+          padding: 8px;
+          gap: 8px;
+          z-index: 1000;
+        }
+        .toolbar button {
+          padding: 6px 16px;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 14px;
+        }
+        .btn-confirm {
+          background: #00a8ff;
+          color: white;
+        }
+        .btn-cancel {
+          background: #f0f0f0;
+          color: #333;
+        }
+        .hint {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          color: white;
+          font-size: 18px;
+          text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+          pointer-events: none;
+          z-index: 100;
+        }
+        .size-info {
+          position: fixed;
+          background: rgba(0, 0, 0, 0.7);
+          color: white;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 12px;
+          pointer-events: none;
+          z-index: 1000;
+          display: none;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="screenshot-bg"></div>
+      <div class="overlay"></div>
+      <div class="hint">按住鼠标拖动选择截图区域，按 ESC 取消</div>
+      <div class="selection"></div>
+      <div class="size-info"></div>
+      <div class="toolbar">
+        <button class="btn-cancel" onclick="cancel()">取消</button>
+        <button class="btn-confirm" onclick="confirm()">确定</button>
+      </div>
+      <script>
+        const { ipcRenderer, desktopCapturer } = require('electron');
+        const selection = document.querySelector('.selection');
+        const toolbar = document.querySelector('.toolbar');
+        const hint = document.querySelector('.hint');
+        const sizeInfo = document.querySelector('.size-info');
+        
+        let isSelecting = false;
+        let startX, startY;
+        let rect = { x: 0, y: 0, width: 0, height: 0 };
+        let scaleFactor = 1;
+        
+        // 获取屏幕缩放比例
+        const { screen } = require('electron');
+        const primaryDisplay = screen.getPrimaryDisplay();
+        scaleFactor = primaryDisplay.scaleFactor;
+        
+        document.addEventListener('mousedown', (e) => {
+          isSelecting = true;
+          startX = e.clientX;
+          startY = e.clientY;
+          selection.style.display = 'block';
+          selection.style.left = startX + 'px';
+          selection.style.top = startY + 'px';
+          selection.style.width = '0px';
+          selection.style.height = '0px';
+          hint.style.display = 'none';
+          sizeInfo.style.display = 'block';
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+          if (!isSelecting) return;
+          
+          const currentX = e.clientX;
+          const currentY = e.clientY;
+          
+          rect.x = Math.min(startX, currentX);
+          rect.y = Math.min(startY, currentY);
+          rect.width = Math.abs(currentX - startX);
+          rect.height = Math.abs(currentY - startY);
+          
+          selection.style.left = rect.x + 'px';
+          selection.style.top = rect.y + 'px';
+          selection.style.width = rect.width + 'px';
+          selection.style.height = rect.height + 'px';
+          
+          // 更新尺寸信息
+          sizeInfo.textContent = Math.round(rect.width) + ' x ' + Math.round(rect.height);
+          sizeInfo.style.left = (rect.x + rect.width / 2 - 30) + 'px';
+          sizeInfo.style.top = (rect.y + rect.height + 10) + 'px';
+        });
+        
+        document.addEventListener('mouseup', (e) => {
+          if (!isSelecting) return;
+          isSelecting = false;
+          
+          if (rect.width > 10 && rect.height > 10) {
+            toolbar.style.display = 'flex';
+            toolbar.style.left = (rect.x + rect.width - 150) + 'px';
+            toolbar.style.top = (rect.y + rect.height + 10) + 'px';
+          } else {
+            resetSelection();
+          }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            cancel();
+          }
+        });
+        
+        function resetSelection() {
+          selection.style.display = 'none';
+          toolbar.style.display = 'none';
+          sizeInfo.style.display = 'none';
+          hint.style.display = 'block';
+          rect = { x: 0, y: 0, width: 0, height: 0 };
+        }
+        
+        async function confirm() {
+          if (rect.width < 10 || rect.height < 10) return;
+          
+          // 创建 canvas 裁剪图片
+          const canvas = document.createElement('canvas');
+          canvas.width = rect.width * scaleFactor;
+          canvas.height = rect.height * scaleFactor;
+          const ctx = canvas.getContext('2d');
+          
+          const img = new Image();
+          img.onload = () => {
+            ctx.drawImage(
+              img,
+              rect.x * scaleFactor,
+              rect.y * scaleFactor,
+              rect.width * scaleFactor,
+              rect.height * scaleFactor,
+              0,
+              0,
+              canvas.width,
+              canvas.height
+            );
+            
+            const imageData = canvas.toDataURL('image/png');
+            ipcRenderer.invoke('complete-screenshot', { imageData, rect });
+          };
+          img.src = document.querySelector('.screenshot-bg').style.backgroundImage.slice(5, -2);
+        }
+        
+        function cancel() {
+          ipcRenderer.invoke('cancel-screenshot');
+        }
+      </script>
+    </body>
+    </html>
+  `;
+}
 
 // ==================== 应用启动 ====================
 

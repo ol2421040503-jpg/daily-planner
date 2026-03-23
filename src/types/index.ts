@@ -175,6 +175,10 @@ declare global {
       onWindowReady: (callback: () => void) => void;
       // 清理
       removeAllListeners: (channel: string) => void;
+      // 截图功能
+      startScreenshot: () => Promise<{ success: boolean; error?: string }>;
+      onCompleteScreenshot: (callback: (data: { success: boolean; imageData?: string }) => void) => void;
+      cancelScreenshot: () => Promise<{ success: boolean }>;
     };
   }
 }
