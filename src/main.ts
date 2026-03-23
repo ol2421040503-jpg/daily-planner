@@ -263,6 +263,10 @@ class DailyPlanner {
   private showYearlyStats: boolean = false;  // 是否显示年度统计
   private showWeeklySummary: boolean = false;  // 是否显示周总结
   private showMonthlySummary: boolean = false;  // 是否显示月总结
+  // 总结导航偏移量（用于查看历史周期）
+  private viewingWeekOffset: number = 0;   // 0=当前周，-1=上周，1=下周
+  private viewingMonthOffset: number = 0;  // 0=当前月，-1=上月，1=下月
+  private viewingYearOffset: number = 0;   // 0=当前年，-1=去年，1=明年
   // 总结文字存储（按年-周/年-月/年 格式存储）
   private summaryNotes: {
     weekly: Record<string, string>;   // key: "2024-W01" 格式
@@ -1419,46 +1423,107 @@ class DailyPlanner {
     localStorage.setItem('dailyPlannerSummaryNotes', JSON.stringify(this.summaryNotes));
   }
 
-  // 获取当前周标识（如 "2024-W01"）
-  private getWeekKey(): string {
-    const now = new Date();
-    const year = now.getFullYear();
+  // 获取周标识（如 "2024-W01"），支持偏移量
+  private getWeekKey(offset: number = 0): string {
+    const date = new Date();
+    date.setDate(date.getDate() + offset * 7); // 偏移周数
+    const year = date.getFullYear();
     const oneJan = new Date(year, 0, 1);
-    const days = Math.floor((now.getTime() - oneJan.getTime()) / 86400000);
+    const days = Math.floor((date.getTime() - oneJan.getTime()) / 86400000);
     const weekNum = Math.ceil((days + oneJan.getDay() + 1) / 7);
     return `${year}-W${String(weekNum).padStart(2, '0')}`;
   }
 
-  // 获取当前月标识（如 "2024-01"）
-  private getMonthKey(): string {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  // 获取指定周的日期范围（用于显示）
+  private getWeekDateRange(offset: number = 0): { start: string; end: string; year: number; weekNum: number } {
+    const date = new Date();
+    date.setDate(date.getDate() + offset * 7);
+    
+    // 获取本周一
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(date);
+    monday.setDate(diff);
+    
+    // 获取本周日
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    
+    const year = date.getFullYear();
+    const oneJan = new Date(year, 0, 1);
+    const days = Math.floor((date.getTime() - oneJan.getTime()) / 86400000);
+    const weekNum = Math.ceil((days + oneJan.getDay() + 1) / 7);
+    
+    return {
+      start: this.formatDate(monday),
+      end: this.formatDate(sunday),
+      year,
+      weekNum
+    };
   }
 
-  // 获取当前年标识（如 "2024"）
-  private getYearKey(): string {
-    return String(this.currentDate.getFullYear());
+  // 获取月标识（如 "2024-01"），支持偏移量
+  private getMonthKey(offset: number = 0): string {
+    const date = new Date();
+    date.setMonth(date.getMonth() + offset);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  // 获取指定月的信息
+  private getMonthInfo(offset: number = 0): { year: number; month: number; key: string } {
+    const date = new Date();
+    date.setMonth(date.getMonth() + offset);
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    return {
+      year,
+      month,
+      key: `${year}-${String(month).padStart(2, '0')}`
+    };
+  }
+
+  // 获取年标识（如 "2024"），支持偏移量
+  private getYearKey(offset: number = 0): string {
+    return String(this.currentDate.getFullYear() + offset);
   }
 
   // 保存周总结文字
   public saveWeeklySummaryNote(note: string): void {
-    const key = this.getWeekKey();
+    const key = this.getWeekKey(this.viewingWeekOffset);
     this.summaryNotes.weekly[key] = note;
     this.saveSummaryNotes();
   }
 
   // 保存月总结文字
   public saveMonthlySummaryNote(note: string): void {
-    const key = this.getMonthKey();
+    const key = this.getMonthKey(this.viewingMonthOffset);
     this.summaryNotes.monthly[key] = note;
     this.saveSummaryNotes();
   }
 
   // 保存年度总结文字
   public saveYearlySummaryNote(note: string): void {
-    const key = this.getYearKey();
+    const key = this.getYearKey(this.viewingYearOffset);
     this.summaryNotes.yearly[key] = note;
     this.saveSummaryNotes();
+  }
+
+  // 导航周总结
+  public navigateWeeklySummary(direction: number): void {
+    this.viewingWeekOffset += direction;
+    this.render();
+  }
+
+  // 导航月总结
+  public navigateMonthlySummary(direction: number): void {
+    this.viewingMonthOffset += direction;
+    this.render();
+  }
+
+  // 导航年度总结
+  public navigateYearlySummary(direction: number): void {
+    this.viewingYearOffset += direction;
+    this.render();
   }
 
   // 加载主题设置
@@ -2092,8 +2157,11 @@ class DailyPlanner {
   }
 
   // 获取周统计数据（详细版）
-  private getWeeklyStats(): WeeklyStats {
+  private getWeeklyStats(offset: number = 0): WeeklyStats {
     const today = new Date();
+    // 应用周偏移
+    today.setDate(today.getDate() + offset * 7);
+    
     const dayOfWeek = today.getDay();
     const adjustedDayOfWeek = (dayOfWeek + 6) % 7; // 周一为第一天
     
@@ -2130,7 +2198,7 @@ class DailyPlanner {
     const pending = total - completed;
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
     
-    // 计算上周数据
+    // 计算上周数据（相对于当前查看的周）
     const lastWeekStart = new Date(weekStart);
     lastWeekStart.setDate(weekStart.getDate() - 7);
     
@@ -2226,8 +2294,8 @@ class DailyPlanner {
   }
 
   // 获取扩展的年度统计
-  private getYearlyStatsExtended(): YearlyStatsExtended {
-    const year = this.currentDate.getFullYear();
+  private getYearlyStatsExtended(offset: number = 0): YearlyStatsExtended {
+    const year = this.currentDate.getFullYear() + offset;
     let total = 0;
     let completed = 0;
     let totalDays = 0;
@@ -4455,7 +4523,7 @@ class DailyPlanner {
     const isDark = this.themeMode === 'dark';
     const bgClass = isDark ? 'bg-gray-800' : 'bg-white';
     const textClass = isDark ? 'text-gray-100' : 'text-gray-800';
-    const stats = this.getWeeklyStats();
+    const stats = this.getWeeklyStats(this.viewingWeekOffset);
     
     const circumference = 2 * Math.PI * 60;
     const offset = circumference - (stats.percentage / 100) * circumference;
@@ -4472,19 +4540,42 @@ class DailyPlanner {
     };
     const motivation = getMotivationText();
     
+    // 获取当前查看周的信息
+    const weekInfo = this.getWeekDateRange(this.viewingWeekOffset);
+    const weekTitle = this.viewingWeekOffset === 0 ? '本周总结' : 
+                      this.viewingWeekOffset === -1 ? '上周总结' : 
+                      this.viewingWeekOffset === 1 ? '下周总结' : 
+                      `第${weekInfo.weekNum}周总结`;
+    
     return `
       <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
-           onclick="planner.showWeeklySummary = false; planner.render();">
+           onclick="planner.showWeeklySummary = false; planner.viewingWeekOffset = 0; planner.render();">
         <div class="${bgClass} rounded-2xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
              onclick="event.stopPropagation()">
           
-          <!-- 标题 -->
+          <!-- 标题与导航 -->
           <div class="flex items-center justify-between mb-6">
-            <div>
-              <h2 class="text-xl font-bold ${textClass}">📊 本周总结</h2>
-              <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${stats.byDay[0].date} ~ ${stats.byDay[6].date}</p>
+            <div class="flex items-center gap-2">
+              <!-- 左箭头 -->
+              <button onclick="planner.navigateWeeklySummary(-1)"
+                      class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+              </button>
+              <div class="text-center min-w-[120px]">
+                <h2 class="text-xl font-bold ${textClass}">📊 ${weekTitle}</h2>
+                <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${stats.byDay[0].date} ~ ${stats.byDay[6].date}</p>
+              </div>
+              <!-- 右箭头 -->
+              <button onclick="planner.navigateWeeklySummary(1)"
+                      class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
             </div>
-            <button onclick="planner.showWeeklySummary = false; planner.render();"
+            <button onclick="planner.showWeeklySummary = false; planner.viewingWeekOffset = 0; planner.render();"
                     class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
               <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -4577,12 +4668,12 @@ class DailyPlanner {
           
           <!-- 周总结文字区域 -->
           <div class="mt-4">
-            <h3 class="text-sm font-semibold ${textClass} mb-2">📝 本周感想</h3>
+            <h3 class="text-sm font-semibold ${textClass} mb-2">📝 ${this.viewingWeekOffset === 0 ? '本周' : '该周'}感想</h3>
             <textarea 
               class="w-full h-24 p-3 rounded-xl border ${isDark ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400' : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400'} focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               placeholder="写下这周的总结感想..."
               onchange="planner.saveWeeklySummaryNote(this.value)"
-            >${this.summaryNotes.weekly[this.getWeekKey()] || ''}</textarea>
+            >${this.summaryNotes.weekly[this.getWeekKey(this.viewingWeekOffset)] || ''}</textarea>
           </div>
           
           <!-- 成就徽章 -->
@@ -4604,8 +4695,10 @@ class DailyPlanner {
     const bgClass = isDark ? 'bg-gray-800' : 'bg-white';
     const textClass = isDark ? 'text-gray-100' : 'text-gray-800';
     
-    const year = this.currentDate.getFullYear();
-    const month = this.currentDate.getMonth();
+    // 使用偏移量计算年份和月份
+    const monthInfo = this.getMonthInfo(this.viewingMonthOffset);
+    const year = monthInfo.year;
+    const month = monthInfo.month - 1; // 转换为0-based
     const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
     
     // 统计本月数据
@@ -4659,20 +4752,41 @@ class DailyPlanner {
       return { text: '🚀 下个月，你一定可以做得更好！', color: 'from-purple-400 to-pink-500' };
     };
     const motivation = getMotivationText();
+    // 月总结标题
+    const monthTitle = this.viewingMonthOffset === 0 ? '本月总结' : 
+                       this.viewingMonthOffset === -1 ? '上月总结' : 
+                       this.viewingMonthOffset === 1 ? '下月总结' : 
+                       `${monthNames[month]}总结`;
     
     return `
       <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
-           onclick="planner.showMonthlySummary = false; planner.render();">
+           onclick="planner.showMonthlySummary = false; planner.viewingMonthOffset = 0; planner.render();">
         <div class="${bgClass} rounded-2xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
              onclick="event.stopPropagation()">
           
-          <!-- 标题 -->
+          <!-- 标题与导航 -->
           <div class="flex items-center justify-between mb-6">
-            <div>
-              <h2 class="text-xl font-bold ${textClass}">📊 ${monthNames[month]}总结</h2>
-              <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${year}年</p>
+            <div class="flex items-center gap-2">
+              <!-- 左箭头 -->
+              <button onclick="planner.navigateMonthlySummary(-1)"
+                      class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+              </button>
+              <div class="text-center min-w-[120px]">
+                <h2 class="text-xl font-bold ${textClass}">📊 ${monthTitle}</h2>
+                <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${year}年</p>
+              </div>
+              <!-- 右箭头 -->
+              <button onclick="planner.navigateMonthlySummary(1)"
+                      class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
             </div>
-            <button onclick="planner.showMonthlySummary = false; planner.render();"
+            <button onclick="planner.showMonthlySummary = false; planner.viewingMonthOffset = 0; planner.render();"
                     class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
               <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -4749,12 +4863,12 @@ class DailyPlanner {
           
           <!-- 月总结文字区域 -->
           <div class="mt-4">
-            <h3 class="text-sm font-semibold ${textClass} mb-2">📝 本月感想</h3>
+            <h3 class="text-sm font-semibold ${textClass} mb-2">📝 ${this.viewingMonthOffset === 0 ? '本月' : '该月'}感想</h3>
             <textarea 
               class="w-full h-24 p-3 rounded-xl border ${isDark ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400' : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400'} focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
               placeholder="写下这个月的总结感想..."
               onchange="planner.saveMonthlySummaryNote(this.value)"
-            >${this.summaryNotes.monthly[this.getMonthKey()] || ''}</textarea>
+            >${this.summaryNotes.monthly[this.getMonthKey(this.viewingMonthOffset)] || ''}</textarea>
           </div>
         </div>
       </div>
@@ -4828,7 +4942,8 @@ class DailyPlanner {
     const isDark = this.themeMode === 'dark';
     const bgClass = isDark ? 'bg-gray-800' : 'bg-white';
     const textClass = isDark ? 'text-gray-100' : 'text-gray-800';
-    const stats = this.getYearlyStatsExtended();
+    const stats = this.getYearlyStatsExtended(this.viewingYearOffset);
+    const currentYear = this.currentDate.getFullYear() + this.viewingYearOffset;
 
     const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
     
@@ -4840,26 +4955,48 @@ class DailyPlanner {
     
     // 激励文案
     const getMotivationText = () => {
-      if (stats.percentage >= 80) return { text: `🏆 ${this.currentDate.getFullYear()}年，你完成了${stats.completed}个任务，效率爆表！`, badges: ['效率达人', '任务终结者'] };
-      if (stats.percentage >= 60) return { text: `👏 ${this.currentDate.getFullYear()}年，你完成了${stats.completed}个任务，表现出色！`, badges: ['坚持之星'] };
-      if (stats.percentage >= 40) return { text: `💪 ${this.currentDate.getFullYear()}年，你完成了${stats.completed}个任务，继续加油！`, badges: ['努力向前'] };
-      return { text: `🚀 ${this.currentDate.getFullYear()}年过去了，新的一年你一定可以做得更好！`, badges: ['新起点'] };
+      if (stats.percentage >= 80) return { text: `🏆 ${currentYear}年，你完成了${stats.completed}个任务，效率爆表！`, badges: ['效率达人', '任务终结者'] };
+      if (stats.percentage >= 60) return { text: `👏 ${currentYear}年，你完成了${stats.completed}个任务，表现出色！`, badges: ['坚持之星'] };
+      if (stats.percentage >= 40) return { text: `💪 ${currentYear}年，你完成了${stats.completed}个任务，继续加油！`, badges: ['努力向前'] };
+      return { text: `🚀 ${currentYear}年过去了，新的一年你一定可以做得更好！`, badges: ['新起点'] };
     };
     const motivation = getMotivationText();
+    
+    // 年度标题
+    const yearTitle = this.viewingYearOffset === 0 ? '本年度总结' : 
+                      this.viewingYearOffset === -1 ? '去年总结' : 
+                      this.viewingYearOffset === 1 ? '明年总结' : 
+                      `${currentYear}年度总结`;
 
     return `
       <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
-           onclick="planner.showYearlyStats = false; planner.render();">
+           onclick="planner.showYearlyStats = false; planner.viewingYearOffset = 0; planner.render();">
         <div class="${bgClass} rounded-2xl shadow-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto"
              onclick="event.stopPropagation()">
           
-          <!-- 标题 -->
+          <!-- 标题与导航 -->
           <div class="flex items-center justify-between mb-6">
-            <div>
-              <h2 class="text-2xl font-bold ${textClass}">🎊 ${this.currentDate.getFullYear()}年度总结</h2>
-              <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">回顾这一年，你做得很棒！</p>
+            <div class="flex items-center gap-2">
+              <!-- 左箭头 -->
+              <button onclick="planner.navigateYearlySummary(-1)"
+                      class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+              </button>
+              <div class="text-center min-w-[150px]">
+                <h2 class="text-2xl font-bold ${textClass}">🎊 ${yearTitle}</h2>
+                <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${currentYear}年</p>
+              </div>
+              <!-- 右箭头 -->
+              <button onclick="planner.navigateYearlySummary(1)"
+                      class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
             </div>
-            <button onclick="planner.showYearlyStats = false; planner.render();"
+            <button onclick="planner.showYearlyStats = false; planner.viewingYearOffset = 0; planner.render();"
                     class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
               <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -4989,12 +5126,12 @@ class DailyPlanner {
           
           <!-- 年度总结文字区域 -->
           <div class="mt-4">
-            <h3 class="text-sm font-semibold ${textClass} mb-2">📝 年度感想</h3>
+            <h3 class="text-sm font-semibold ${textClass} mb-2">📝 ${this.viewingYearOffset === 0 ? '本年度' : '该年度'}感想</h3>
             <textarea 
               class="w-full h-24 p-3 rounded-xl border ${isDark ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400' : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400'} focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
               placeholder="写下这一年的总结感想..."
               onchange="planner.saveYearlySummaryNote(this.value)"
-            >${this.summaryNotes.yearly[this.getYearKey()] || ''}</textarea>
+            >${this.summaryNotes.yearly[this.getYearKey(this.viewingYearOffset)] || ''}</textarea>
           </div>
         </div>
       </div>
