@@ -5860,23 +5860,33 @@ class DailyPlanner {
           
           <!-- 步骤列表（只读） -->
           <div class="space-y-4">
-            ${this.currentGuide.steps.map((step, index) => `
-              <div class="p-4 ${isDark ? 'bg-gray-700' : 'bg-gray-50'} rounded-xl border ${isDark ? 'border-gray-600' : 'border-gray-200'}">
-                <div class="flex items-center gap-3 mb-3">
-                  <span class="w-8 h-8 flex items-center justify-center ${isDark ? 'bg-purple-600' : 'bg-purple-500'} text-white text-sm font-bold rounded-full">${index + 1}</span>
-                  <span class="font-medium ${textClass}">${step.title || '未命名步骤'}</span>
-                </div>
-                ${step.content ? `<div class="ml-11 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'} whitespace-pre-wrap">${step.content}</div>` : ''}
-                ${step.images && step.images.length > 0 ? `
-                  <div class="ml-11 mt-3 flex flex-wrap gap-2">
-                    ${step.images.map(img => `
-                      <img src="${img}" class="max-w-[200px] max-h-[150px] rounded-lg cursor-pointer hover:opacity-90" 
-                           onclick="planner.enlargeImage('${img}', '${step.id}')" />
-                    `).join('')}
+            ${this.currentGuide.steps.map((step, index) => {
+              // 合并旧的单图和新数组图
+              const allImages: string[] = [];
+              if (step.imageUrl) allImages.push(step.imageUrl);
+              if (step.images && step.images.length > 0) {
+                step.images.forEach(img => {
+                  if (!allImages.includes(img)) allImages.push(img);
+                });
+              }
+              return `
+                <div class="p-4 ${isDark ? 'bg-gray-700' : 'bg-gray-50'} rounded-xl border ${isDark ? 'border-gray-600' : 'border-gray-200'}">
+                  <div class="flex items-center gap-3 mb-3">
+                    <span class="w-8 h-8 flex items-center justify-center ${isDark ? 'bg-purple-600' : 'bg-purple-500'} text-white text-sm font-bold rounded-full">${index + 1}</span>
+                    <span class="font-medium ${textClass}">${step.title || '未命名步骤'}</span>
                   </div>
-                ` : ''}
-              </div>
-            `).join('')}
+                  ${step.content ? `<div class="ml-11 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'} whitespace-pre-wrap">${step.content}</div>` : ''}
+                  ${allImages.length > 0 ? `
+                    <div class="ml-11 mt-3 flex flex-wrap gap-2">
+                      ${allImages.map(img => `
+                        <img src="${img}" class="max-w-[200px] max-h-[150px] rounded-lg cursor-pointer hover:opacity-90" 
+                             onclick="planner.enlargeImage('${img}', '${step.id}')" />
+                      `).join('')}
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+            }).join('')}
           </div>
         </div>
       </div>
