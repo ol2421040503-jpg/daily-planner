@@ -16,7 +16,7 @@ let tray = null;
 let reminderInterval;
 
 // 应用版本
-const APP_VERSION = '1.4.5';
+const APP_VERSION = '1.4.6';
 
 // 更新状态
 let updateDownloaded = false;
@@ -815,6 +815,7 @@ function generateScreenshotHTML(thumbnail) {
           background-image: url('${thumbnail}');
           background-size: cover;
           background-position: top left;
+          pointer-events: none;
         }
         .overlay {
           position: fixed;
@@ -823,13 +824,15 @@ function generateScreenshotHTML(thumbnail) {
           width: 100vw;
           height: 100vh;
           background: rgba(0, 0, 0, 0.3);
+          pointer-events: none;
         }
         .selection {
           position: fixed;
           border: 2px solid #00a8ff;
-          background: rgba(0, 168, 255, 0.1);
+          background: transparent;
           display: none;
           pointer-events: none;
+          box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.3);
         }
         .toolbar {
           position: fixed;
@@ -847,6 +850,9 @@ function generateScreenshotHTML(thumbnail) {
           border-radius: 4px;
           cursor: pointer;
           font-size: 14px;
+        }
+        .toolbar button:hover {
+          opacity: 0.9;
         }
         .btn-confirm {
           background: #00a8ff;
@@ -866,10 +872,13 @@ function generateScreenshotHTML(thumbnail) {
           text-shadow: 0 1px 3px rgba(0,0,0,0.5);
           pointer-events: none;
           z-index: 100;
+          background: rgba(0,0,0,0.5);
+          padding: 10px 20px;
+          border-radius: 8px;
         }
         .size-info {
           position: fixed;
-          background: rgba(0, 0, 0, 0.7);
+          background: rgba(0, 0, 0, 0.8);
           color: white;
           padding: 4px 8px;
           border-radius: 4px;
@@ -891,11 +900,12 @@ function generateScreenshotHTML(thumbnail) {
         <button class="btn-confirm" onclick="confirm()">确定</button>
       </div>
       <script>
-        const { ipcRenderer, desktopCapturer } = require('electron');
+        const { ipcRenderer, nativeImage, clipboard } = require('electron');
         const selection = document.querySelector('.selection');
         const toolbar = document.querySelector('.toolbar');
         const hint = document.querySelector('.hint');
         const sizeInfo = document.querySelector('.size-info');
+        const bgImg = document.querySelector('.screenshot-bg');
         
         let isSelecting = false;
         let startX, startY;
@@ -903,11 +913,26 @@ function generateScreenshotHTML(thumbnail) {
         let scaleFactor = 1;
         
         // 获取屏幕缩放比例
-        const { screen } = require('electron');
-        const primaryDisplay = screen.getPrimaryDisplay();
-        scaleFactor = primaryDisplay.scaleFactor;
+        try {
+          const { screen } = require('electron');
+          const primaryDisplay = screen.getPrimaryDisplay();
+          scaleFactor = primaryDisplay.scaleFactor;
+        } catch(e) {
+          scaleFactor = 1;
+        }
         
+        // 监听键盘事件
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            cancel();
+          }
+        });
+        
+        // 鼠标按下开始选择
         document.addEventListener('mousedown', (e) => {
+          // 如果点击在工具栏上，不开始新的选择
+          if (toolbar.style.display === 'flex') return;
+          
           isSelecting = true;
           startX = e.clientX;
           startY = e.clientY;
@@ -920,6 +945,7 @@ function generateScreenshotHTML(thumbnail) {
           sizeInfo.style.display = 'block';
         });
         
+        // 鼠标移动更新选择区域
         document.addEventListener('mousemove', (e) => {
           if (!isSelecting) return;
           
@@ -942,22 +968,17 @@ function generateScreenshotHTML(thumbnail) {
           sizeInfo.style.top = (rect.y + rect.height + 10) + 'px';
         });
         
+        // 鼠标松开显示工具栏
         document.addEventListener('mouseup', (e) => {
           if (!isSelecting) return;
           isSelecting = false;
           
           if (rect.width > 10 && rect.height > 10) {
             toolbar.style.display = 'flex';
-            toolbar.style.left = (rect.x + rect.width - 150) + 'px';
+            toolbar.style.left = Math.min(rect.x + rect.width - 150, window.innerWidth - 160) + 'px';
             toolbar.style.top = (rect.y + rect.height + 10) + 'px';
           } else {
             resetSelection();
-          }
-        });
-        
-        document.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape') {
-            cancel();
           }
         });
         
@@ -993,14 +1014,36 @@ function generateScreenshotHTML(thumbnail) {
             );
             
             const imageData = canvas.toDataURL('image/png');
+            
+            // 复制到剪贴板
+            try {
+              const base64Data = imageData.replace(/^data:image\\/png;base64,/, '');
+              const imageBuffer = Buffer.from(base64Data, 'base64');
+              const nativeImg = nativeImage.createFromBuffer(imageBuffer);
+              clipboard.writeImage(nativeImg);
+              console.log('截图已复制到剪贴板');
+            } catch(e) {
+              console.error('复制到剪贴板失败:', e);
+            }
+            
+            // 发送给主窗口
             ipcRenderer.invoke('complete-screenshot', { imageData, rect });
           };
-          img.src = document.querySelector('.screenshot-bg').style.backgroundImage.slice(5, -2);
+          img.onerror = (e) => {
+            console.error('图片加载失败:', e);
+            cancel();
+          };
+          img.src = bgImg.style.backgroundImage.slice(5, -2);
         }
         
         function cancel() {
           ipcRenderer.invoke('cancel-screenshot');
         }
+        
+        // 页面加载完成后聚焦
+        window.onload = () => {
+          window.focus();
+        };
       </script>
     </body>
     </html>
