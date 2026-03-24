@@ -951,13 +951,18 @@ class DailyPlanner {
     if (dropdown) {
       const isDark = this.themeMode === 'dark';
       dropdown.innerHTML = this.generateGuideDropdownItems(isDark);
+      dropdown.style.display = 'block';
     }
   }
 
   // 知识库搜索框获取焦点
   public onGuideSearchFocus(): void {
     this.showGuideDropdown = true;
-    this.render();
+    // 只显示下拉列表，不重新渲染整个页面
+    const dropdown = document.getElementById('guideDropdown');
+    if (dropdown) {
+      dropdown.style.display = 'block';
+    }
   }
 
   // 选择知识库
@@ -965,12 +970,19 @@ class DailyPlanner {
     this.selectedGuideId = guideId;
     this.guideSearchKeyword = guideName;
     this.showGuideDropdown = false;
-    // 更新输入框显示
+    // 只更新输入框、隐藏下拉、显示清除按钮，不重新渲染整个页面
     const input = document.getElementById('guideSearchInput') as HTMLInputElement;
     if (input) {
       input.value = guideName;
     }
-    this.render();
+    const dropdown = document.getElementById('guideDropdown');
+    if (dropdown) {
+      dropdown.style.display = 'none';
+    }
+    const clearBtn = document.getElementById('guideClearBtn');
+    if (clearBtn) {
+      clearBtn.style.display = 'block';
+    }
   }
 
   // 清除选中的知识库
@@ -982,14 +994,24 @@ class DailyPlanner {
     if (input) {
       input.value = '';
     }
-    this.render();
+    const dropdown = document.getElementById('guideDropdown');
+    if (dropdown) {
+      dropdown.style.display = 'none';
+    }
+    const clearBtn = document.getElementById('guideClearBtn');
+    if (clearBtn) {
+      clearBtn.style.display = 'none';
+    }
   }
 
   // 关闭知识库下拉（点击外部时调用）
   public closeGuideDropdown(): void {
     if (this.showGuideDropdown) {
       this.showGuideDropdown = false;
-      this.render();
+      const dropdown = document.getElementById('guideDropdown');
+      if (dropdown) {
+        dropdown.style.display = 'none';
+      }
     }
   }
 
@@ -4620,7 +4642,7 @@ class DailyPlanner {
               ` : ''}
             </div>
             <!-- 知识库选择器（可搜索下拉） -->
-            <div class="flex items-center gap-2 mt-2 relative">
+            <div class="flex items-center gap-2 mt-2 relative" id="guideSelectorWrapper">
               <span class="text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}">知识库：</span>
               <div class="flex-1 relative">
                 <input type="text"
@@ -4630,18 +4652,23 @@ class DailyPlanner {
                        oninput="planner.onGuideSearchInput(this.value)"
                        onfocus="planner.onGuideSearchFocus()"
                        onclick="event.stopPropagation()"
-                       class="w-full px-2 py-1 text-xs border ${inputBg} rounded-lg ${isDark ? 'text-gray-100 placeholder-gray-400' : 'text-gray-800 placeholder-gray-400'}"
+                       class="w-full px-2 py-1 text-xs border ${inputBg} rounded-lg ${isDark ? 'text-gray-100 placeholder-gray-400' : 'text-gray-800 placeholder-gray-400'} pr-7"
                 />
-                ${this.selectedGuideId ? `
-                  <button onclick="event.stopPropagation(); planner.clearSelectedGuide()"
-                          class="absolute right-2 top-1/2 -translate-y-1/2 ${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'}">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                  </button>
-                ` : ''}
-                <!-- 下拉列表 -->
-                ${this.showGuideDropdown ? this.generateGuideDropdownHTML(isDark, inputBg) : ''}
+                <!-- 清除按钮（始终存在DOM中，通过style控制显示） -->
+                <button id="guideClearBtn"
+                        onclick="event.stopPropagation(); planner.clearSelectedGuide()"
+                        style="display: ${this.selectedGuideId ? 'block' : 'none'}"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 ${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'}">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+                <!-- 下拉列表（始终存在DOM中，通过style控制显示） -->
+                <div id="guideDropdown" 
+                     style="display: ${this.showGuideDropdown ? 'block' : 'none'}"
+                     class="absolute left-0 right-0 top-full mt-1 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg shadow-lg max-h-48 overflow-y-auto z-50">
+                  ${this.generateGuideDropdownItems(isDark)}
+                </div>
               </div>
             </div>
           </div>
