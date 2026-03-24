@@ -1,6 +1,6 @@
 {
   "name": "daily-planner",
-  "version": "1.4.8",
+  "version": "1.4.9",
   "description": "每日规划应用 - 简洁高效的桌面任务管理工具",
   "author": "严辉村高斯林",
   "license": "MIT",
@@ -27,7 +27,7 @@
     "autoprefixer": "^10.4.20",
     "coze-coding-dev-sdk": "^0.7.17",
     "cross-env": "^7.0.3",
-    "electron": "^35.0.0",
+    "electron": "^22.3.27",
     "electron-builder": "^26.8.1",
     "eslint": "^9",
     "only-allow": "^1.2.2",
