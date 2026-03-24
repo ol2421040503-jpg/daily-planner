@@ -337,8 +337,9 @@ class DailyPlanner {
   // 知识库相关
   private showKnowledgeBase: boolean = false;  // 显示知识库
   private knowledgeGuides: KnowledgeGuide[] = [];  // 所有指南
-  private currentGuide: KnowledgeGuide | null = null;  // 当前编辑的指南
+  private currentGuide: KnowledgeGuide | null = null;  // 当前编辑/查看的指南
   private editingGuideId: string = '';  // 正在编辑的指南ID
+  private viewingGuideId: string = '';  // 正在查看的指南ID（只读模式）
   private knowledgeSearchKeyword: string = '';  // 知识库搜索关键词
   
   // 提醒配置
@@ -2211,6 +2212,7 @@ class DailyPlanner {
   public backToGuideList(): void {
     this.currentGuide = null;
     this.editingGuideId = '';
+    this.viewingGuideId = '';
     this.render();
   }
   
@@ -2219,6 +2221,7 @@ class DailyPlanner {
     this.showKnowledgeBase = false;
     this.currentGuide = null;
     this.editingGuideId = '';
+    this.viewingGuideId = '';
     this.knowledgeSearchKeyword = '';  // 清除搜索关键词
     // 注意：不恢复 selectedDate，因为用户已经主动关闭了知识库
     this.render();
@@ -5548,13 +5551,14 @@ class DailyPlanner {
     this.render();
   }
   
-  // 从任务跳转到关联的知识库
+  // 从任务跳转到关联的知识库（只读查看模式）
   public openGuideFromTask(guideId: string): void {
     const guide = this.knowledgeGuides.find(g => g.id === guideId);
     if (guide) {
       this.showKnowledgeBase = true;
-      this.currentGuide = guide;
-      this.editingGuideId = guideId;
+      this.currentGuide = { ...guide, steps: [...guide.steps] };  // 复制一份用于显示
+      this.viewingGuideId = guideId;  // 设置为查看模式
+      this.editingGuideId = '';  // 清除编辑模式
       this.knowledgeSearchKeyword = '';
       // 关闭任务面板
       this.showTaskPanel = false;
@@ -5620,6 +5624,11 @@ class DailyPlanner {
     const bgClass = isDark ? 'bg-gray-800' : 'bg-white';
     const textClass = isDark ? 'text-gray-100' : 'text-gray-800';
     const inputBg = isDark ? 'bg-gray-700 border-gray-600 text-gray-100' : 'bg-white border-gray-300 text-gray-800';
+    
+    // 如果正在查看某个指南（只读模式）
+    if (this.viewingGuideId && this.currentGuide) {
+      return this.generateGuideViewerHTML(isDark, bgClass, textClass, inputBg);
+    }
     
     // 如果正在编辑某个指南，显示编辑页面
     if (this.currentGuide) {
@@ -5807,6 +5816,88 @@ class DailyPlanner {
         </div>
       </div>
     `;
+  }
+
+  // 生成指南查看器 HTML（只读模式）
+  private generateGuideViewerHTML(isDark: boolean, bgClass: string, textClass: string, inputBg: string): string {
+    if (!this.currentGuide) return '';
+    
+    return `
+      <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
+           onclick="planner.closeKnowledgeBase();">
+        <div class="${bgClass} rounded-2xl shadow-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+             onclick="event.stopPropagation()">
+          <!-- 顶部导航 -->
+          <div class="flex items-center justify-between mb-6">
+            <button onclick="planner.closeViewerMode()"
+                    class="flex items-center gap-2 px-3 py-2 ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'} rounded-lg transition-colors">
+              <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+              </svg>
+              <span class="${isDark ? 'text-gray-300' : 'text-gray-600'}">返回</span>
+            </button>
+            <div class="flex items-center gap-2">
+              <button onclick="planner.switchToEditMode()"
+                      class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                编辑
+              </button>
+              <button onclick="planner.closeKnowledgeBase();"
+                      class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <!-- 指南标题 -->
+          <div class="mb-6">
+            <h2 class="text-2xl font-bold ${textClass}">${this.currentGuide.name}</h2>
+          </div>
+          
+          <!-- 步骤列表（只读） -->
+          <div class="space-y-4">
+            ${this.currentGuide.steps.map((step, index) => `
+              <div class="p-4 ${isDark ? 'bg-gray-700' : 'bg-gray-50'} rounded-xl border ${isDark ? 'border-gray-600' : 'border-gray-200'}">
+                <div class="flex items-center gap-3 mb-3">
+                  <span class="w-8 h-8 flex items-center justify-center ${isDark ? 'bg-purple-600' : 'bg-purple-500'} text-white text-sm font-bold rounded-full">${index + 1}</span>
+                  <span class="font-medium ${textClass}">${step.title || '未命名步骤'}</span>
+                </div>
+                ${step.content ? `<div class="ml-11 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'} whitespace-pre-wrap">${step.content}</div>` : ''}
+                ${step.images && step.images.length > 0 ? `
+                  <div class="ml-11 mt-3 flex flex-wrap gap-2">
+                    ${step.images.map(img => `
+                      <img src="${img}" class="max-w-[200px] max-h-[150px] rounded-lg cursor-pointer hover:opacity-90" 
+                           onclick="planner.enlargeImage('${img}', '${step.id}')" />
+                    `).join('')}
+                  </div>
+                ` : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+      ${this.generateEnlargedImageHTML()}
+    `;
+  }
+  
+  // 关闭查看模式
+  public closeViewerMode(): void {
+    this.viewingGuideId = '';
+    this.currentGuide = null;
+    this.render();
+  }
+  
+  // 切换到编辑模式
+  public switchToEditMode(): void {
+    if (this.viewingGuideId && this.currentGuide) {
+      this.editingGuideId = this.viewingGuideId;
+      this.viewingGuideId = '';
+      this.render();
+    }
   }
 
   // 生成指南编辑器 HTML
