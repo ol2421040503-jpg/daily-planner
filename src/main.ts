@@ -2129,8 +2129,8 @@ class DailyPlanner {
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
-    this.knowledgeGuides.push(newGuide);
-    this.saveKnowledgeGuides();
+    // 不立即保存到列表，只在编辑器中显示
+    // 用户点击保存按钮时才会真正保存
     this.editingGuideId = newGuide.id;
     this.currentGuide = newGuide;
     this.render();
@@ -2150,11 +2150,15 @@ class DailyPlanner {
   public saveCurrentGuide(): void {
     if (!this.currentGuide) return;
     const index = this.knowledgeGuides.findIndex(g => g.id === this.currentGuide!.id);
+    this.currentGuide.updatedAt = Date.now();
     if (index >= 0) {
-      this.currentGuide.updatedAt = Date.now();
+      // 更新已存在的指南
       this.knowledgeGuides[index] = { ...this.currentGuide };
-      this.saveKnowledgeGuides();
+    } else {
+      // 新指南，添加到列表
+      this.knowledgeGuides.push({ ...this.currentGuide });
     }
+    this.saveKnowledgeGuides();
   }
 
   // 保存指南（带状态提示）
@@ -2177,6 +2181,13 @@ class DailyPlanner {
 
   // 删除指南
   public deleteGuide(guideId: string): void {
+    const guide = this.knowledgeGuides.find(g => g.id === guideId);
+    if (!guide) return;
+    
+    if (!confirm(`确定要删除指南「${guide.name}」吗？此操作不可撤销。`)) {
+      return;
+    }
+    
     this.knowledgeGuides = this.knowledgeGuides.filter(g => g.id !== guideId);
     this.saveKnowledgeGuides();
     this.render();
@@ -2703,11 +2714,10 @@ class DailyPlanner {
   private toggleThemeMenu(): void {
     this.showThemeMenu = !this.showThemeMenu;
 
-    // 打开主题菜单时，关闭其他弹窗并清除悬停状态
+    // 打开主题菜单时，关闭其他弹窗
     if (this.showThemeMenu) {
-      this.showStatsModal = false;
-      this.showCopyModal = false;
-      this.hoveredDate = null;
+      this.showNotificationPanel = false;
+      this.showMoreMenu = false;
     }
 
     this.render();
@@ -5377,6 +5387,11 @@ class DailyPlanner {
 
   private toggleMoreMenu(): void {
     this.showMoreMenu = !this.showMoreMenu;
+    // 打开更多菜单时，关闭其他弹窗
+    if (this.showMoreMenu) {
+      this.showThemeMenu = false;
+      this.showNotificationPanel = false;
+    }
     this.render();
   }
 
@@ -6524,6 +6539,7 @@ class DailyPlanner {
     this.showNotificationPanel = !this.showNotificationPanel;
     if (this.showNotificationPanel) {
       this.showThemeMenu = false;
+      this.showMoreMenu = false;
     }
     this.render();
   }
