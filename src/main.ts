@@ -22,7 +22,7 @@ const IMAGE_COMPRESSION_CONFIG = {
 };
 
 // ==================== 版本配置 ====================
-const APP_VERSION = '1.4.7';
+const APP_VERSION = '1.4.8';
 const VERSION_CHECK_URL = 'https://your-server.com/api/version'; // 替换为你的版本检查API
 const RELEASE_NOTES: Record<string, string[]> = {
   '1.0.0': [
@@ -124,7 +124,8 @@ interface KnowledgeStep {
   id: string;
   title: string;        // 步骤标题
   content: string;      // 步骤内容/操作说明
-  imageUrl?: string;    // 图片URL（可选）
+  imageUrl?: string;    // 图片URL（可选，兼容旧数据）
+  images?: string[];    // 图片URL数组（支持多图）
   order: number;        // 排序顺序
 }
 
@@ -2038,21 +2039,37 @@ class DailyPlanner {
     }
   }
 
-  // 从 contenteditable 保存步骤内容（已废弃，保留兼容）
+  // 从 contenteditable 保存步骤内容
   public saveStepContentFromEditable(stepId: string): void {
-    this.saveStepTextarea(stepId);
-  }
-
-  // 从 textarea 保存步骤内容
-  public saveStepTextarea(stepId: string): void {
-    const textarea = document.getElementById(`step-content-${stepId}`) as HTMLTextAreaElement;
-    if (!textarea || !this.currentGuide) return;
+    const editor = document.getElementById(`step-content-${stepId}`);
+    if (!editor || !this.currentGuide) return;
     
     const step = this.currentGuide.steps.find(s => s.id === stepId);
     if (step) {
-      step.content = textarea.value;
+      // 克隆编辑器
+      const clone = editor.cloneNode(true) as HTMLElement;
+      
+      // 获取所有图片
+      const imgs = clone.querySelectorAll('img');
+      const images: string[] = [];
+      imgs.forEach(img => {
+        images.push(img.src);
+        img.parentElement?.remove();
+      });
+      
+      // 更新图片数组
+      step.images = images.length > 0 ? images : undefined;
+      
+      // 获取纯文本内容（保留换行）
+      step.content = clone.innerText || '';
+      
       this.saveCurrentGuide();
     }
+  }
+
+  // 从 textarea 保存步骤内容（兼容旧调用）
+  public saveStepTextarea(stepId: string): void {
+    this.saveStepContentFromEditable(stepId);
   }
 
   // 输入时处理（用于实时保存焦点状态）
@@ -2060,30 +2077,6 @@ class DailyPlanner {
     this.setFocusedStep(stepId);
   }
 
-  // 插入图片到步骤（直接更新数据并重新渲染）
-  public insertImageToStep(stepId: string, imageUrl: string): void {
-    // 先保存当前 textarea 的内容
-    const textarea = document.getElementById(`step-content-${stepId}`) as HTMLTextAreaElement;
-    if (textarea && this.currentGuide) {
-      const step = this.currentGuide.steps.find(s => s.id === stepId);
-      if (step) {
-        step.content = textarea.value;
-        step.imageUrl = imageUrl;
-        this.saveCurrentGuide();
-        this.render();
-      }
-    } else {
-      // 如果 textarea 不存在，直接更新数据
-      this.updateStepImageData(stepId, imageUrl);
-    }
-  }
-
-  // 显示图片操作菜单（已废弃，改为在放大弹窗中删除）
-  public showImageActions(stepId: string, imageUrl: string): void {
-    // 直接放大图片
-    this.enlargeImage(imageUrl, stepId);
-  }
-  
   // 放大图片
   public enlargeImage(imageUrl: string, stepId?: string): void {
     this.enlargedImageUrl = imageUrl;
@@ -2100,11 +2093,38 @@ class DailyPlanner {
   
   // 从放大弹窗删除图片
   public deleteEnlargedImage(): void {
-    if (this.enlargedImageStepId) {
-      this.removeStepImageFromEditor(this.enlargedImageStepId);
+    if (this.enlargedImageStepId && this.enlargedImageUrl) {
+      this.removeImageByUrl(this.enlargedImageStepId, this.enlargedImageUrl);
       this.enlargedImageUrl = '';
       this.enlargedImageStepId = '';
       this.render();
+    }
+  }
+  
+  // 根据索引删除图片
+  public removeImageByIndex(stepId: string, index: number): void {
+    if (!this.currentGuide) return;
+    const step = this.currentGuide.steps.find(s => s.id === stepId);
+    if (step && step.images && index < step.images.length) {
+      step.images.splice(index, 1);
+      if (step.images.length === 0) {
+        step.images = undefined;
+      }
+      this.saveCurrentGuide();
+      this.render();
+    }
+  }
+  
+  // 根据 URL 删除图片
+  public removeImageByUrl(stepId: string, imageUrl: string): void {
+    if (!this.currentGuide) return;
+    const step = this.currentGuide.steps.find(s => s.id === stepId);
+    if (step && step.images) {
+      step.images = step.images.filter(img => img !== imageUrl);
+      if (step.images.length === 0) {
+        step.images = undefined;
+      }
+      this.saveCurrentGuide();
     }
   }
 
@@ -5794,28 +5814,28 @@ class DailyPlanner {
                       </div>
                     </div>
                     
-                    <!-- 操作说明和图片 -->
+                    <!-- 操作说明和图片（图文混排编辑区域） -->
                     <div class="ml-11">
-                      <!-- textarea 编辑区域，支持换行 -->
-                      <textarea id="step-content-${step.id}"
-                                data-step-id="${step.id}"
-                                class="w-full min-h-[80px] px-3 py-2 text-sm rounded-lg border ${isDark ? 'border-gray-600 bg-gray-800 text-gray-100' : 'border-gray-200 bg-white text-gray-800'} focus:outline-none focus:ring-2 focus:ring-purple-500 resize-y"
-                                onfocus="planner.setFocusedStep('${step.id}')"
-                                onblur="planner.saveStepTextarea('${step.id}')"
-                                oninput="planner.onStepContentInput('${step.id}')"
-                                placeholder="输入操作说明...（支持换行）">${step.content || ''}</textarea>
-                      
-                      <!-- 图片显示区域 -->
-                      ${step.imageUrl ? `
-                      <div class="relative inline-block image-wrapper mt-2">
-                        <img src="${step.imageUrl}" class="inline-image" data-image-id="${step.id}" style="max-width:100%;max-height:150px;display:block;border-radius:8px;cursor:pointer;" onclick="event.stopPropagation();" ondblclick="event.stopPropagation(); planner.enlargeImage('${step.imageUrl}', '${step.id}')">
-                        <button class="absolute top-1 right-1 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 transition-opacity image-delete-btn" style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;" onclick="event.stopPropagation(); planner.removeStepImageFromEditor('${step.id}')" title="删除图片">
-                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                          </svg>
-                        </button>
-                      </div>
-                      ` : ''}
+                      <!-- contenteditable 编辑区域，支持图文混排和换行 -->
+                      <div contenteditable="true"
+                           id="step-content-${step.id}"
+                           data-step-id="${step.id}"
+                           class="w-full min-h-[80px] px-3 py-2 text-sm rounded-lg border ${isDark ? 'border-gray-600 bg-gray-800 text-gray-100' : 'border-gray-200 bg-white text-gray-800'} focus:outline-none focus:ring-2 focus:ring-purple-500 overflow-auto"
+                           style="white-space: pre-wrap; word-wrap: break-word;"
+                           onfocus="planner.setFocusedStep('${step.id}')"
+                           onblur="planner.saveStepContentFromEditable('${step.id}')"
+                           oninput="planner.onStepContentInput('${step.id}')"
+                           placeholder="输入操作说明...（支持换行）">${step.content || ''}${(() => {
+                             // 合并旧的单图和新数组图
+                             const allImages: string[] = [];
+                             if (step.imageUrl) allImages.push(step.imageUrl);
+                             if (step.images && step.images.length > 0) {
+                               step.images.forEach(img => {
+                                 if (!allImages.includes(img)) allImages.push(img);
+                               });
+                             }
+                             return allImages.map((img, idx) => `<div class="inline-block relative mt-2 mr-2"><img src="${img}" class="inline-image" data-image-id="${step.id}" data-image-index="${idx}" style="max-width:100%;max-height:200px;border-radius:8px;cursor:pointer;" onclick="event.stopPropagation();" ondblclick="event.stopPropagation(); planner.enlargeImage('${img}', '${step.id}')"><button class="absolute top-1 right-1 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 transition-opacity image-delete-btn" style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;" onclick="event.stopPropagation(); planner.removeImageByIndex('${step.id}', ${idx})" title="删除图片"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div>`).join('');
+                           })()}</div>
                       
                       <!-- 图片操作按钮 -->
                       <div class="mt-2 flex gap-2">
@@ -5910,7 +5930,7 @@ class DailyPlanner {
     input.click();
   }
 
-  // 更新步骤图片
+  // 更新步骤图片（添加到数组末尾）
   private async updateStepImage(stepId: string, imageUrl: string): Promise<void> {
     if (!this.currentGuide) return;
     
@@ -5920,20 +5940,44 @@ class DailyPlanner {
     // 先压缩图片
     const compressedImage = await this.compressImage(imageUrl);
     
-    // 保存当前 textarea 的内容
-    const textarea = document.getElementById(`step-content-${stepId}`) as HTMLTextAreaElement;
-    if (textarea) {
-      step.content = textarea.value;
+    // 获取编辑区域
+    const editor = document.getElementById(`step-content-${stepId}`);
+    if (editor) {
+      // 先保存当前文字内容
+      const clone = editor.cloneNode(true) as HTMLElement;
+      const existingImgs = clone.querySelectorAll('img');
+      existingImgs.forEach(img => img.parentElement?.remove());
+      step.content = clone.innerText || '';
+      
+      // 在编辑区域末尾插入新图片
+      const imgWrapper = document.createElement('div');
+      imgWrapper.className = 'inline-block relative mt-2 mr-2';
+      const imgIndex = (step.images?.length || 0);
+      imgWrapper.innerHTML = `
+        <img src="${compressedImage}" class="inline-image" data-image-id="${stepId}" data-image-index="${imgIndex}" style="max-width:100%;max-height:200px;border-radius:8px;cursor:pointer;" onclick="event.stopPropagation();" ondblclick="event.stopPropagation(); planner.enlargeImage('${compressedImage}', '${stepId}')">
+        <button class="absolute top-1 right-1 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 transition-opacity image-delete-btn" style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;" onclick="event.stopPropagation(); planner.removeImageByIndex('${stepId}', ${imgIndex})" title="删除图片">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      `;
+      editor.appendChild(imgWrapper);
     }
     
-    // 设置图片 URL
-    step.imageUrl = compressedImage;
+    // 添加到图片数组
+    if (!step.images) {
+      step.images = [];
+    }
+    step.images.push(compressedImage);
     
-    // 保存并重新渲染
+    // 兼容旧数据：如果有旧的 imageUrl，迁移到 images 数组
+    if (step.imageUrl && !step.images.includes(step.imageUrl)) {
+      step.images.unshift(step.imageUrl);
+      step.imageUrl = undefined;
+    }
+    
     this.saveCurrentGuide();
-    this.render();
-    
-    console.log('图片已插入到步骤:', stepId);
+    console.log('图片已添加到步骤:', stepId, '当前图片数:', step.images.length);
   }
   
   // 压缩图片
