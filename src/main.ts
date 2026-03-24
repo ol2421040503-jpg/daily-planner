@@ -22,7 +22,7 @@ const IMAGE_COMPRESSION_CONFIG = {
 };
 
 // ==================== 版本配置 ====================
-const APP_VERSION = '1.4.2';
+const APP_VERSION = '1.4.3';
 const VERSION_CHECK_URL = 'https://your-server.com/api/version'; // 替换为你的版本检查API
 const RELEASE_NOTES: Record<string, string[]> = {
   '1.0.0': [
@@ -445,8 +445,14 @@ class DailyPlanner {
 
   // 启动真正的截图功能
   private async startRealScreenshot(): Promise<void> {
+    // 检查是否在 Electron 环境中
+    const isElectron = typeof window !== 'undefined' && 
+                       typeof (window as any).process !== 'undefined' && 
+                       (window as any).process.type === 'renderer';
+    
     if (!window.electronAPI) {
-      console.error('Electron API 不可用');
+      // 不在 Electron 环境中，提示用户使用替代方案
+      this.showScreenshotFallbackTip();
       return;
     }
     
@@ -454,10 +460,48 @@ class DailyPlanner {
       const result = await window.electronAPI.startScreenshot();
       if (!result.success) {
         console.error('截图失败:', result.error);
+        this.showScreenshotFallbackTip();
       }
     } catch (err) {
       console.error('启动截图失败:', err);
+      this.showScreenshotFallbackTip();
     }
+  }
+
+  // 显示截图替代方案提示
+  private showScreenshotFallbackTip(): void {
+    // 创建提示弹窗
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md mx-4 shadow-2xl">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="text-2xl">📸</span>
+          <h3 class="text-lg font-semibold text-gray-800 dark:text-white">截图提示</h3>
+        </div>
+        <div class="space-y-3 text-gray-600 dark:text-gray-300">
+          <p>截图功能需要在<strong>桌面版应用</strong>中使用。</p>
+          <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 space-y-2">
+            <p class="text-sm font-medium">📌 临时替代方案：</p>
+            <ol class="text-sm list-decimal list-inside space-y-1">
+              <li>按 <kbd class="px-2 py-0.5 bg-gray-200 dark:bg-gray-600 rounded">Win+Shift+S</kbd> 截图</li>
+              <li>截图会自动复制到剪贴板</li>
+              <li>点击 <strong>"上传图片"</strong> 按钮粘贴</li>
+            </ol>
+          </div>
+        </div>
+        <button onclick="this.closest('.fixed').remove()" 
+                class="mt-4 w-full py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors">
+          我知道了
+        </button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // 点击背景关闭
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
   }
 
   // 从剪贴板读取图片到指定步骤
