@@ -333,6 +333,9 @@ class DailyPlanner {
   private selectedIcon: string = '🏷️';  // 选中的图标
   private showTaskPanel: boolean = false;  // 显示任务面板
   private preselectedTime: string = '';  // 预选时间（用于周视图点击时间格子）
+  private guideSearchKeyword: string = '';  // 知识库搜索关键词（任务面板）
+  private showGuideDropdown: boolean = false;  // 显示知识库下拉
+  private selectedGuideId: string = '';  // 选中的知识库ID
   
   // 知识库相关
   private showKnowledgeBase: boolean = false;  // 显示知识库
@@ -935,17 +938,106 @@ class DailyPlanner {
     }
   }
 
+  // 知识库搜索输入
+  public onGuideSearchInput(value: string): void {
+    this.guideSearchKeyword = value;
+    this.showGuideDropdown = true;
+    // 如果清空了输入，也清除选中
+    if (!value) {
+      this.selectedGuideId = '';
+    }
+    // 只更新下拉列表，不重新渲染整个页面
+    const dropdown = document.getElementById('guideDropdown');
+    if (dropdown) {
+      const isDark = this.themeMode === 'dark';
+      dropdown.innerHTML = this.generateGuideDropdownItems(isDark);
+    }
+  }
+
+  // 知识库搜索框获取焦点
+  public onGuideSearchFocus(): void {
+    this.showGuideDropdown = true;
+    this.render();
+  }
+
+  // 选择知识库
+  public selectGuide(guideId: string, guideName: string): void {
+    this.selectedGuideId = guideId;
+    this.guideSearchKeyword = guideName;
+    this.showGuideDropdown = false;
+    // 更新输入框显示
+    const input = document.getElementById('guideSearchInput') as HTMLInputElement;
+    if (input) {
+      input.value = guideName;
+    }
+    this.render();
+  }
+
+  // 清除选中的知识库
+  public clearSelectedGuide(): void {
+    this.selectedGuideId = '';
+    this.guideSearchKeyword = '';
+    this.showGuideDropdown = false;
+    const input = document.getElementById('guideSearchInput') as HTMLInputElement;
+    if (input) {
+      input.value = '';
+    }
+    this.render();
+  }
+
+  // 关闭知识库下拉（点击外部时调用）
+  public closeGuideDropdown(): void {
+    if (this.showGuideDropdown) {
+      this.showGuideDropdown = false;
+      this.render();
+    }
+  }
+
+  // 生成知识库下拉列表HTML
+  private generateGuideDropdownHTML(isDark: boolean, inputBg: string): string {
+    return `
+      <div id="guideDropdown" 
+           class="absolute left-0 right-0 top-full mt-1 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg shadow-lg max-h-48 overflow-y-auto z-50">
+        ${this.generateGuideDropdownItems(isDark)}
+      </div>
+    `;
+  }
+
+  // 生成知识库下拉列表项
+  private generateGuideDropdownItems(isDark: boolean): string {
+    const keyword = this.guideSearchKeyword.toLowerCase().trim();
+    const filteredGuides = keyword 
+      ? this.knowledgeGuides.filter(g => g.name.toLowerCase().includes(keyword))
+      : this.knowledgeGuides;
+    
+    if (filteredGuides.length === 0) {
+      return `<div class="px-3 py-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">无匹配的知识库</div>`;
+    }
+    
+    return filteredGuides.map(guide => `
+      <div onclick="event.stopPropagation(); planner.selectGuide('${guide.id}', '${guide.name.replace(/'/g, "\\'")}')"
+           class="px-3 py-2 text-sm cursor-pointer ${isDark ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} ${this.selectedGuideId === guide.id ? (isDark ? 'bg-gray-700' : 'bg-blue-50') : ''}">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+          </svg>
+          <span>${guide.name}</span>
+          ${this.selectedGuideId === guide.id ? '<span class="ml-auto text-blue-500">✓</span>' : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
   // 处理添加任务
   private handleAddTask(): void {
     const input = document.getElementById('taskInput') as HTMLTextAreaElement;
     const prioritySelect = document.getElementById('prioritySelect') as HTMLSelectElement;
     const timeSelect = document.getElementById('taskTimeInput') as HTMLSelectElement;
-    const guideSelect = document.getElementById('guideSelect') as HTMLSelectElement;
     const text = input?.value?.trim();
     const priority = prioritySelect?.value as TaskPriority || 'normal';
     const tags = Array.from(this.selectedTagsForTask);
     const time = timeSelect?.value || '';
-    const guideId = guideSelect?.value || '';
+    const guideId = this.selectedGuideId;
     
     if (!text) return;
     
@@ -953,7 +1045,9 @@ class DailyPlanner {
     
     // 清空输入和选择
     if (input) input.value = '';
-    if (guideSelect) guideSelect.value = '';
+    this.selectedGuideId = '';
+    this.guideSearchKeyword = '';
+    this.showGuideDropdown = false;
     this.selectedTagsForTask.clear();
     this.preselectedTime = '';
   }
@@ -3849,6 +3943,11 @@ class DailyPlanner {
     this.selectedDate = null;
     this.hoveredDate = null;
     this.showTaskPanel = false;
+    // 重置知识库选择器状态
+    this.selectedGuideId = '';
+    this.guideSearchKeyword = '';
+    this.showGuideDropdown = false;
+    this.selectedTagsForTask.clear();
     this.render();
   }
 
@@ -4445,7 +4544,8 @@ class DailyPlanner {
 
     return `
       <!-- 右侧侧边栏任务面板 -->
-      <div class="task-panel fixed top-0 right-0 h-full w-80 ${bgClass} shadow-2xl z-40 transform transition-transform duration-300 ${this.showTaskPanel ? 'translate-x-0' : 'translate-x-full'}">
+      <div class="task-panel fixed top-0 right-0 h-full w-80 ${bgClass} shadow-2xl z-40 transform transition-transform duration-300 ${this.showTaskPanel ? 'translate-x-0' : 'translate-x-full'}"
+           onclick="planner.closeGuideDropdown()">
         <div class="h-full flex flex-col ${window.electronAPI ? 'pt-10' : 'pt-4'}">
           <!-- 头部 -->
           <div class="px-4 pb-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}">
@@ -4519,15 +4619,30 @@ class DailyPlanner {
                 </button>
               ` : ''}
             </div>
-            <!-- 知识库选择器 -->
-            <div class="flex items-center gap-2 mt-2">
+            <!-- 知识库选择器（可搜索下拉） -->
+            <div class="flex items-center gap-2 mt-2 relative">
               <span class="text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}">知识库：</span>
-              <select id="guideSelect" class="flex-1 px-2 py-1 text-xs border ${inputBg} rounded-lg ${isDark ? 'text-gray-100' : ''}">
-                <option value="">不关联</option>
-                ${this.knowledgeGuides.map(guide => `
-                  <option value="${guide.id}">${guide.name}</option>
-                `).join('')}
-              </select>
+              <div class="flex-1 relative">
+                <input type="text"
+                       id="guideSearchInput"
+                       placeholder="搜索知识库..."
+                       value="${this.guideSearchKeyword}"
+                       oninput="planner.onGuideSearchInput(this.value)"
+                       onfocus="planner.onGuideSearchFocus()"
+                       onclick="event.stopPropagation()"
+                       class="w-full px-2 py-1 text-xs border ${inputBg} rounded-lg ${isDark ? 'text-gray-100 placeholder-gray-400' : 'text-gray-800 placeholder-gray-400'}"
+                />
+                ${this.selectedGuideId ? `
+                  <button onclick="event.stopPropagation(); planner.clearSelectedGuide()"
+                          class="absolute right-2 top-1/2 -translate-y-1/2 ${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                ` : ''}
+                <!-- 下拉列表 -->
+                ${this.showGuideDropdown ? this.generateGuideDropdownHTML(isDark, inputBg) : ''}
+              </div>
             </div>
           </div>
           
