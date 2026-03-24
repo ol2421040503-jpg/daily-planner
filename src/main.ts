@@ -4889,37 +4889,12 @@ class DailyPlanner {
             </div>
 
             <!-- 产品经理 -->
-            <div class="text-center p-4 ${cardBg} rounded-lg">
-              <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center">
+            <div class="text-center p-4 ${cardBg} rounded-lg flex flex-col items-center justify-center">
+              <div class="w-16 h-16 mb-3 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center">
                 <span class="text-2xl">🥜</span>
               </div>
               <h3 class="text-base font-semibold ${textClass}">土味花生</h3>
-              <p class="text-xs ${labelClass} mb-3">每日规划 产品经理</p>
-              
-              <div class="space-y-3 text-left">
-                <div class="flex items-center gap-2 p-2 ${isDark ? 'bg-gray-600' : 'bg-gray-100'} rounded-lg">
-                  <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
-                    </svg>
-                  </div>
-                  <div class="flex-1">
-                    <p class="text-[10px] ${labelClass}">电话 / 微信</p>
-                    <p class="text-xs font-medium ${textClass}">19373108815</p>
-                  </div>
-                </div>
-                <div class="flex items-center gap-2 p-2 ${isDark ? 'bg-gray-600' : 'bg-gray-100'} rounded-lg">
-                  <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                    </svg>
-                  </div>
-                  <div class="flex-1">
-                    <p class="text-[10px] ${labelClass}">邮箱</p>
-                    <p class="text-xs font-medium ${textClass}">2421040503@qq.com</p>
-                  </div>
-                </div>
-              </div>
+              <p class="text-xs ${labelClass}">每日规划 产品经理</p>
             </div>
           </div>
 
