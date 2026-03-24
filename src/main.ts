@@ -940,19 +940,22 @@ class DailyPlanner {
 
   // 知识库搜索输入
   public onGuideSearchInput(value: string): void {
+    // 更新状态，但不做任何可能触发重新渲染的操作
     this.guideSearchKeyword = value;
     this.showGuideDropdown = true;
     // 如果清空了输入，也清除选中
     if (!value) {
       this.selectedGuideId = '';
     }
-    // 只更新下拉列表，不重新渲染整个页面
-    const dropdown = document.getElementById('guideDropdown');
-    if (dropdown) {
-      const isDark = this.themeMode === 'dark';
-      dropdown.innerHTML = this.generateGuideDropdownItems(isDark);
-      dropdown.style.display = 'block';
-    }
+    // 使用 requestAnimationFrame 延迟更新下拉列表，避免干扰输入
+    requestAnimationFrame(() => {
+      const dropdown = document.getElementById('guideDropdown');
+      if (dropdown) {
+        const isDark = this.themeMode === 'dark';
+        dropdown.innerHTML = this.generateGuideDropdownItems(isDark);
+        dropdown.style.display = 'block';
+      }
+    });
   }
 
   // 知识库搜索框获取焦点
@@ -4646,9 +4649,11 @@ class DailyPlanner {
                        id="guideSearchInput"
                        placeholder="搜索知识库..."
                        value="${this.guideSearchKeyword}"
-                       oninput="planner.onGuideSearchInput(this.value)"
-                       onfocus="planner.onGuideSearchFocus()"
+                       oninput="event.stopPropagation(); planner.onGuideSearchInput(this.value)"
+                       onfocus="event.stopPropagation(); planner.onGuideSearchFocus()"
                        onclick="event.stopPropagation()"
+                       onkeydown="event.stopPropagation()"
+                       onkeyup="event.stopPropagation()"
                        class="w-full px-2 py-1 text-xs border ${inputBg} rounded-lg ${isDark ? 'text-gray-100 placeholder-gray-400' : 'text-gray-800 placeholder-gray-400'} pr-7"
                 />
                 <!-- 清除按钮（始终存在DOM中，通过style控制显示） -->
