@@ -4566,8 +4566,7 @@ class DailyPlanner {
 
     return `
       <!-- 右侧侧边栏任务面板 -->
-      <div class="task-panel fixed top-0 right-0 h-full w-80 ${bgClass} shadow-2xl z-40 transform transition-transform duration-300 ${this.showTaskPanel ? 'translate-x-0' : 'translate-x-full'}"
-           onclick="planner.closeGuideDropdown()">
+      <div class="task-panel fixed top-0 right-0 h-full w-80 ${bgClass} shadow-2xl z-40 transform transition-transform duration-300 ${this.showTaskPanel ? 'translate-x-0' : 'translate-x-full'}">
         <div class="h-full flex flex-col ${window.electronAPI ? 'pt-10' : 'pt-4'}">
           <!-- 头部 -->
           <div class="px-4 pb-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}">
@@ -4654,6 +4653,7 @@ class DailyPlanner {
                        onclick="event.stopPropagation()"
                        onkeydown="event.stopPropagation()"
                        onkeyup="event.stopPropagation()"
+                       onblur="setTimeout(() => planner.closeGuideDropdown(), 200)"
                        class="w-full px-2 py-1 text-xs border ${inputBg} rounded-lg ${isDark ? 'text-gray-100 placeholder-gray-400' : 'text-gray-800 placeholder-gray-400'} pr-7"
                 />
                 <!-- 清除按钮（始终存在DOM中，通过style控制显示） -->
