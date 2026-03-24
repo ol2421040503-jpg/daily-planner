@@ -3977,19 +3977,12 @@ class DailyPlanner {
   private toggleStatsModal(): void {
     this.showStatsModal = !this.showStatsModal;
 
-    // 当打开统计弹窗时，清除悬停状态并关闭其他弹窗/面板
+    // 当打开统计弹窗时，关闭其他弹窗
     if (this.showStatsModal) {
-      this.hoveredDate = null;
-      // 关闭其他弹窗
       this.showCopyModal = false;
       this.showThemeMenu = false;
       this.showQuadrantView = false;
-      // 关闭任务面板并清除选中日期
-      this.showTaskPanel = false;
-      this.selectedDate = null;
-      // 关闭知识库
-      this.showKnowledgeBase = false;
-      this.currentGuide = null;
+      // 不关闭任务面板，让弹窗覆盖在上面
     }
 
     this.render();
@@ -3999,18 +3992,12 @@ class DailyPlanner {
   private toggleQuadrantView(): void {
     this.showQuadrantView = !this.showQuadrantView;
 
-    // 当打开四象限视图时，关闭其他弹窗和面板
+    // 当打开四象限视图时，关闭其他弹窗
     if (this.showQuadrantView) {
       this.showStatsModal = false;
       this.showCopyModal = false;
       this.showThemeMenu = false;
-      this.hoveredDate = null;
-      // 关闭任务面板并清除选中日期
-      this.showTaskPanel = false;
-      this.selectedDate = null;
-      // 关闭知识库
-      this.showKnowledgeBase = false;
-      this.currentGuide = null;
+      // 不关闭任务面板，让弹窗覆盖在上面
       // 初始化日期范围
       if (!this.quadrantStartDate || !this.quadrantEndDate) {
         const today = new Date();
@@ -4854,7 +4841,7 @@ class DailyPlanner {
     return `
       <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
            onclick="planner.showContactInfo = false; planner.render();">
-        <div class="${bgClass} rounded-xl shadow-2xl p-6 w-full max-w-sm"
+        <div class="${bgClass} rounded-xl shadow-2xl p-6 w-full max-w-lg"
              onclick="event.stopPropagation()">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-xl font-bold ${textClass}">👤 联系作者</h2>
@@ -4866,44 +4853,58 @@ class DailyPlanner {
             </button>
           </div>
 
-          <div class="space-y-4">
-            <div class="text-center py-4">
-              <div class="w-20 h-20 mx-auto mb-3 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
-                <span class="text-3xl">👨‍💻</span>
+          <div class="grid grid-cols-2 gap-4">
+            <!-- 开发者 -->
+            <div class="text-center p-4 ${cardBg} rounded-lg">
+              <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                <span class="text-2xl">👨‍💻</span>
               </div>
-              <h3 class="text-lg font-semibold ${textClass}">严辉村高斯林</h3>
-              <p class="text-sm ${labelClass}">每日规划 作者</p>
-            </div>
-
-            <div class="space-y-3">
-              <div class="flex items-center gap-3 p-3 ${cardBg} rounded-lg">
-                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                  <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <h3 class="text-base font-semibold ${textClass}">严辉村高斯林</h3>
+              <p class="text-xs ${labelClass} mb-3">每日规划 作者</p>
+              
+              <div class="space-y-2 text-left">
+                <div class="flex items-center gap-2 text-xs">
+                  <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                   </svg>
+                  <span class="${textClass}">19373108815</span>
                 </div>
-                <div class="flex-1">
-                  <p class="text-xs ${labelClass}">电话 / 微信</p>
-                  <p class="font-medium ${textClass}">19373108815</p>
-                </div>
-              </div>
-
-              <div class="flex items-center gap-3 p-3 ${cardBg} rounded-lg">
-                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex items-center gap-2 text-xs">
+                  <svg class="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                   </svg>
-                </div>
-                <div class="flex-1">
-                  <p class="text-xs ${labelClass}">邮箱</p>
-                  <p class="font-medium ${textClass}">2421040503@qq.com</p>
+                  <span class="${textClass}">2421040503@qq.com</span>
                 </div>
               </div>
             </div>
 
-            <div class="pt-2 text-center">
-              <p class="text-xs ${labelClass}">感谢使用每日规划！欢迎反馈建议 🙏</p>
+            <!-- 产品经理 -->
+            <div class="text-center p-4 ${cardBg} rounded-lg">
+              <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center">
+                <span class="text-2xl">🥜</span>
+              </div>
+              <h3 class="text-base font-semibold ${textClass}">土味花生</h3>
+              <p class="text-xs ${labelClass} mb-3">每日规划 产品经理</p>
+              
+              <div class="space-y-2 text-left">
+                <div class="flex items-center gap-2 text-xs">
+                  <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                  </svg>
+                  <span class="${textClass}">19373108815</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs">
+                  <svg class="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
+                  <span class="${textClass}">2421040503@qq.com</span>
+                </div>
+              </div>
             </div>
+          </div>
+
+          <div class="pt-4 text-center">
+            <p class="text-xs ${labelClass}">感谢使用每日规划！欢迎反馈建议 🙏</p>
           </div>
         </div>
       </div>
@@ -5735,9 +5736,7 @@ class DailyPlanner {
   // 打开周总结（关闭其他面板）
   public openWeeklySummary(): void {
     this.showWeeklySummary = true;
-    this.showTaskPanel = false;
-    this.selectedDate = null;
-    this.hoveredDate = null;
+    // 不关闭任务面板，让弹窗覆盖在上面
     this.closeOtherPanels();
     this.render();
   }
@@ -5745,9 +5744,7 @@ class DailyPlanner {
   // 打开月总结（关闭其他面板）
   public openMonthlySummary(): void {
     this.showMonthlySummary = true;
-    this.showTaskPanel = false;
-    this.selectedDate = null;
-    this.hoveredDate = null;
+    // 不关闭任务面板，让弹窗覆盖在上面
     this.closeOtherPanels();
     this.render();
   }
@@ -5755,9 +5752,7 @@ class DailyPlanner {
   // 打开年度总结（关闭其他面板）
   public openYearlyStats(): void {
     this.showYearlyStats = true;
-    this.showTaskPanel = false;
-    this.selectedDate = null;
-    this.hoveredDate = null;
+    // 不关闭任务面板，让弹窗覆盖在上面
     this.closeOtherPanels();
     this.render();
   }
