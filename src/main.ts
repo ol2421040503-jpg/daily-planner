@@ -22,7 +22,7 @@ const IMAGE_COMPRESSION_CONFIG = {
 };
 
 // ==================== 版本配置 ====================
-const APP_VERSION = '1.4.6';
+const APP_VERSION = '1.4.7';
 const VERSION_CHECK_URL = 'https://your-server.com/api/version'; // 替换为你的版本检查API
 const RELEASE_NOTES: Record<string, string[]> = {
   '1.0.0': [
@@ -5914,14 +5914,26 @@ class DailyPlanner {
   private async updateStepImage(stepId: string, imageUrl: string): Promise<void> {
     if (!this.currentGuide) return;
     
+    const step = this.currentGuide.steps.find(s => s.id === stepId);
+    if (!step) return;
+    
     // 先压缩图片
     const compressedImage = await this.compressImage(imageUrl);
     
-    // 先保存当前编辑区域中的内容
-    this.saveStepContentFromEditable(stepId);
+    // 保存当前 textarea 的内容
+    const textarea = document.getElementById(`step-content-${stepId}`) as HTMLTextAreaElement;
+    if (textarea) {
+      step.content = textarea.value;
+    }
     
-    // 插入图片到编辑区域
-    this.insertImageToStep(stepId, compressedImage);
+    // 设置图片 URL
+    step.imageUrl = compressedImage;
+    
+    // 保存并重新渲染
+    this.saveCurrentGuide();
+    this.render();
+    
+    console.log('图片已插入到步骤:', stepId);
   }
   
   // 压缩图片

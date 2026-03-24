@@ -16,7 +16,7 @@ let tray = null;
 let reminderInterval;
 
 // 应用版本
-const APP_VERSION = '1.4.6';
+const APP_VERSION = '1.4.7';
 
 // 更新状态
 let updateDownloaded = false;
@@ -794,6 +794,7 @@ ipcMain.handle('cancel-screenshot', () => {
 
 // 生成截图选择页面的 HTML
 function generateScreenshotHTML(thumbnail) {
+  // 将缩略图数据存储在全局变量中，避免从 CSS 中提取
   return `
     <!DOCTYPE html>
     <html>
@@ -806,24 +807,12 @@ function generateScreenshotHTML(thumbnail) {
           overflow: hidden;
           background: transparent;
         }
-        .screenshot-bg {
+        .screenshot-canvas {
           position: fixed;
           top: 0;
           left: 0;
           width: 100vw;
           height: 100vh;
-          background-image: url('${thumbnail}');
-          background-size: cover;
-          background-position: top left;
-          pointer-events: none;
-        }
-        .overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100vw;
-          height: 100vh;
-          background: rgba(0, 0, 0, 0.3);
           pointer-events: none;
         }
         .selection {
@@ -832,7 +821,6 @@ function generateScreenshotHTML(thumbnail) {
           background: transparent;
           display: none;
           pointer-events: none;
-          box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.3);
         }
         .toolbar {
           position: fixed;
@@ -890,8 +878,7 @@ function generateScreenshotHTML(thumbnail) {
       </style>
     </head>
     <body>
-      <div class="screenshot-bg"></div>
-      <div class="overlay"></div>
+      <canvas class="screenshot-canvas" id="canvas"></canvas>
       <div class="hint">按住鼠标拖动选择截图区域，按 ESC 取消</div>
       <div class="selection"></div>
       <div class="size-info"></div>
@@ -901,16 +888,18 @@ function generateScreenshotHTML(thumbnail) {
       </div>
       <script>
         const { ipcRenderer, nativeImage, clipboard } = require('electron');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
         const selection = document.querySelector('.selection');
         const toolbar = document.querySelector('.toolbar');
         const hint = document.querySelector('.hint');
         const sizeInfo = document.querySelector('.size-info');
-        const bgImg = document.querySelector('.screenshot-bg');
         
         let isSelecting = false;
         let startX, startY;
         let rect = { x: 0, y: 0, width: 0, height: 0 };
         let scaleFactor = 1;
+        let screenshotImg = null;
         
         // 获取屏幕缩放比例
         try {
@@ -921,6 +910,21 @@ function generateScreenshotHTML(thumbnail) {
           scaleFactor = 1;
         }
         
+        // 加载截图并绘制到 canvas
+        const thumbnailData = '${thumbnail}';
+        const img = new Image();
+        img.onload = () => {
+          screenshotImg = img;
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+          
+          // 绘制截图（带半透明遮罩效果）
+          ctx.globalAlpha = 0.5;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          ctx.globalAlpha = 1;
+        };
+        img.src = thumbnailData;
+        
         // 监听键盘事件
         document.addEventListener('keydown', (e) => {
           if (e.key === 'Escape') {
@@ -930,7 +934,6 @@ function generateScreenshotHTML(thumbnail) {
         
         // 鼠标按下开始选择
         document.addEventListener('mousedown', (e) => {
-          // 如果点击在工具栏上，不开始新的选择
           if (toolbar.style.display === 'flex') return;
           
           isSelecting = true;
@@ -943,7 +946,33 @@ function generateScreenshotHTML(thumbnail) {
           selection.style.height = '0px';
           hint.style.display = 'none';
           sizeInfo.style.display = 'block';
+          
+          // 重绘清晰区域
+          redrawCanvas();
         });
+        
+        // 重绘 canvas，显示选择区域
+        function redrawCanvas() {
+          if (!screenshotImg) return;
+          
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          // 先绘制半透明全图
+          ctx.globalAlpha = 0.5;
+          ctx.drawImage(screenshotImg, 0, 0, canvas.width, canvas.height);
+          ctx.globalAlpha = 1;
+          
+          // 如果有选择区域，绘制清晰的部分
+          if (rect.width > 0 && rect.height > 0) {
+            // 计算在原图上的位置
+            const sx = rect.x * scaleFactor;
+            const sy = rect.y * scaleFactor;
+            const sw = rect.width * scaleFactor;
+            const sh = rect.height * scaleFactor;
+            
+            ctx.drawImage(screenshotImg, sx, sy, sw, sh, rect.x, rect.y, rect.width, rect.height);
+          }
+        }
         
         // 鼠标移动更新选择区域
         document.addEventListener('mousemove', (e) => {
@@ -966,6 +995,9 @@ function generateScreenshotHTML(thumbnail) {
           sizeInfo.textContent = Math.round(rect.width) + ' x ' + Math.round(rect.height);
           sizeInfo.style.left = (rect.x + rect.width / 2 - 30) + 'px';
           sizeInfo.style.top = (rect.y + rect.height + 10) + 'px';
+          
+          // 重绘 canvas
+          redrawCanvas();
         });
         
         // 鼠标松开显示工具栏
@@ -988,52 +1020,50 @@ function generateScreenshotHTML(thumbnail) {
           sizeInfo.style.display = 'none';
           hint.style.display = 'block';
           rect = { x: 0, y: 0, width: 0, height: 0 };
+          redrawCanvas();
         }
         
         async function confirm() {
-          if (rect.width < 10 || rect.height < 10) return;
+          if (rect.width < 10 || rect.height < 10 || !screenshotImg) {
+            console.error('选择区域太小或图片未加载');
+            cancel();
+            return;
+          }
           
           // 创建 canvas 裁剪图片
-          const canvas = document.createElement('canvas');
-          canvas.width = rect.width * scaleFactor;
-          canvas.height = rect.height * scaleFactor;
-          const ctx = canvas.getContext('2d');
+          const cropCanvas = document.createElement('canvas');
+          cropCanvas.width = rect.width * scaleFactor;
+          cropCanvas.height = rect.height * scaleFactor;
+          const cropCtx = cropCanvas.getContext('2d');
           
-          const img = new Image();
-          img.onload = () => {
-            ctx.drawImage(
-              img,
-              rect.x * scaleFactor,
-              rect.y * scaleFactor,
-              rect.width * scaleFactor,
-              rect.height * scaleFactor,
-              0,
-              0,
-              canvas.width,
-              canvas.height
-            );
-            
-            const imageData = canvas.toDataURL('image/png');
-            
-            // 复制到剪贴板
-            try {
-              const base64Data = imageData.replace(/^data:image\\/png;base64,/, '');
-              const imageBuffer = Buffer.from(base64Data, 'base64');
-              const nativeImg = nativeImage.createFromBuffer(imageBuffer);
-              clipboard.writeImage(nativeImg);
-              console.log('截图已复制到剪贴板');
-            } catch(e) {
-              console.error('复制到剪贴板失败:', e);
-            }
-            
-            // 发送给主窗口
-            ipcRenderer.invoke('complete-screenshot', { imageData, rect });
-          };
-          img.onerror = (e) => {
-            console.error('图片加载失败:', e);
-            cancel();
-          };
-          img.src = bgImg.style.backgroundImage.slice(5, -2);
+          // 从原图裁剪
+          cropCtx.drawImage(
+            screenshotImg,
+            rect.x * scaleFactor,
+            rect.y * scaleFactor,
+            rect.width * scaleFactor,
+            rect.height * scaleFactor,
+            0, 0,
+            cropCanvas.width,
+            cropCanvas.height
+          );
+          
+          const imageData = cropCanvas.toDataURL('image/png');
+          console.log('截图完成，大小:', Math.round(imageData.length / 1024) + 'KB');
+          
+          // 复制到剪贴板
+          try {
+            const base64Data = imageData.replace(/^data:image\\/png;base64,/, '');
+            const imageBuffer = Buffer.from(base64Data, 'base64');
+            const nativeImg = nativeImage.createFromBuffer(imageBuffer);
+            clipboard.writeImage(nativeImg);
+            console.log('截图已复制到剪贴板');
+          } catch(e) {
+            console.error('复制到剪贴板失败:', e);
+          }
+          
+          // 发送给主窗口
+          ipcRenderer.invoke('complete-screenshot', { imageData, rect });
         }
         
         function cancel() {
