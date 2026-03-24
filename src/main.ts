@@ -2374,7 +2374,84 @@ class DailyPlanner {
   // 搜索知识库
   public searchKnowledgeGuides(keyword: string): void {
     this.knowledgeSearchKeyword = keyword;
-    this.render();
+    // 不重新渲染整个页面，只更新指南列表
+    this.updateGuideList();
+  }
+  
+  // 更新指南列表（不重新渲染整个页面）
+  private updateGuideList(): void {
+    const guideListContainer = document.getElementById('guideListContainer');
+    if (!guideListContainer) return;
+    
+    const isDark = this.themeMode === 'dark';
+    const filteredGuides = this.getFilteredKnowledgeGuides();
+    const hasKeyword = this.knowledgeSearchKeyword.trim().length > 0;
+    const textClass = isDark ? 'text-gray-100' : 'text-gray-800';
+    
+    if (this.knowledgeGuides.length === 0) {
+      guideListContainer.innerHTML = `
+        <div class="text-center py-12">
+          <div class="text-6xl mb-4">📖</div>
+          <p class="${isDark ? 'text-gray-400' : 'text-gray-500'}">还没有任何指南</p>
+          <p class="text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'} mt-2">点击上方按钮创建你的第一个指南，或导入已有知识库</p>
+        </div>
+      `;
+      return;
+    }
+    
+    if (hasKeyword && filteredGuides.length === 0) {
+      guideListContainer.innerHTML = `
+        <div class="text-center py-12">
+          <div class="text-6xl mb-4">🔍</div>
+          <p class="${isDark ? 'text-gray-400' : 'text-gray-500'}">没有找到匹配的内容</p>
+          <p class="text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'} mt-2">尝试其他关键词</p>
+        </div>
+      `;
+      return;
+    }
+    
+    guideListContainer.innerHTML = `
+      ${hasKeyword ? `
+        <div class="mb-3 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">
+          找到 ${filteredGuides.length} 个匹配的指南
+        </div>
+      ` : ''}
+      <div class="space-y-3">
+        ${filteredGuides.map(guide => {
+          const matchInfo = this.getGuideMatchInfo(guide);
+          return `
+            <div class="p-4 ${isDark ? 'bg-gray-700 hover:bg-gray-650' : 'bg-gray-50 hover:bg-gray-100'} rounded-xl transition-all cursor-pointer group"
+                 onclick="planner.openGuideEdit('${guide.id}')">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3 flex-1 min-w-0">
+                  <span class="text-2xl flex-shrink-0">📋</span>
+                  <div class="flex-1 min-w-0">
+                    <h3 class="font-medium ${textClass} truncate">${this.highlightKeyword(guide.name, this.knowledgeSearchKeyword)}</h3>
+                    <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${guide.steps.length} 个步骤 · 更新于 ${new Date(guide.updatedAt).toLocaleDateString()}</p>
+                    ${matchInfo ? `
+                      <p class="text-xs ${isDark ? 'text-purple-400' : 'text-purple-600'} mt-1 truncate">
+                        ${matchInfo}
+                      </p>
+                    ` : ''}
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                  <button onclick="event.stopPropagation(); planner.deleteGuide('${guide.id}')"
+                          class="p-2 opacity-0 group-hover:opacity-100 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-all">
+                    <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                  </button>
+                  <svg class="w-5 h-5 ${isDark ? 'text-gray-500' : 'text-gray-400'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
   }
   
   // 清除搜索
@@ -5883,6 +5960,7 @@ class DailyPlanner {
           </button>
           
           <!-- 指南列表 -->
+          <div id="guideListContainer">
           ${(() => {
             const filteredGuides = this.getFilteredKnowledgeGuides();
             const hasKeyword = this.knowledgeSearchKeyword.trim().length > 0;
@@ -5951,6 +6029,7 @@ class DailyPlanner {
               </div>
             `;
           })()}
+          </div>
         </div>
       </div>
       ${this.generateEnlargedImageHTML()}
