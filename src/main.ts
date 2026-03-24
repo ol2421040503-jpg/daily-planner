@@ -5869,7 +5869,7 @@ class DailyPlanner {
                         <button onclick="planner.triggerScreenshot('${step.id}')"
                                 class="px-2 py-1 text-xs ${isDark ? 'bg-gray-600 hover:bg-gray-500 text-gray-200' : 'bg-gray-200 hover:bg-gray-300 text-gray-600'} rounded transition-colors flex items-center gap-1">
                           <span>📷</span>
-                          <span>截图</span>
+                          <span>截图(Ctrl+B)</span>
                         </button>
                       </div>
                     </div>
