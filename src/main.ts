@@ -1731,14 +1731,12 @@ class DailyPlanner {
           <h3 class="font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}">待办提醒</h3>
           <div class="flex items-center gap-2">
             ${notifications.length > 0 ? `
-              <button onclick="planner.clearAllNotifications()" class="text-xs ${isDark ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-600'}">
-                清空列表
-              </button>
-            ` : ''}
-            ${unreadCount > 0 ? `
-              <span class="${isDark ? 'text-gray-600' : 'text-gray-300'}">|</span>
               <button onclick="planner.markAllNotificationsRead()" class="text-xs ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-600'}">
                 全部已读
+              </button>
+              <span class="${isDark ? 'text-gray-600' : 'text-gray-300'}">|</span>
+              <button onclick="planner.clearAllNotifications()" class="text-xs ${isDark ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-600'}">
+                清空列表
               </button>
             ` : ''}
           </div>
