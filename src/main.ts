@@ -22,7 +22,7 @@ const IMAGE_COMPRESSION_CONFIG = {
 };
 
 // ==================== 版本配置 ====================
-const APP_VERSION = '1.4.3';
+const APP_VERSION = '1.4.4';
 const VERSION_CHECK_URL = 'https://your-server.com/api/version'; // 替换为你的版本检查API
 const RELEASE_NOTES: Record<string, string[]> = {
   '1.0.0': [
