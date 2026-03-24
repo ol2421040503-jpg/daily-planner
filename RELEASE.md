@@ -1,30 +1,25 @@
-# 每日规划 v1.4.4 发布说明
+# 每日规划 v1.4.5 发布说明
 
 ## 发布日期
 2024-03-24
 
 ## 更新内容
 
-### 截图功能优化
-- 截图按钮添加快捷键提示：**📷 截图(Ctrl+B)**
-- Web 环境下显示友好的替代方案提示
-- 使用 Electron desktopCapturer API 实现真正的截图
-- 支持拖拽框选任意区域
-- 实时显示选择区域尺寸
-- 支持 ESC 键取消截图
+### 文本框换行修复
+- 知识库步骤文本框现在**支持回车换行**了
+- 将 contenteditable div 改为 textarea，原生支持换行
+- 图片显示在文本框下方，不再混在一起
 
 ## 使用方法
 
-### 桌面版截图
-1. 点击 **📷 截图(Ctrl+B)** 按钮，或按 **Ctrl+B**
-2. 屏幕变成半透明遮罩
-3. 按住鼠标拖动选择截图区域
-4. 松开鼠标，点击 **"确定"** 保存
-5. 截图自动插入到当前步骤
+### 换行输入
+- 在步骤内容框中直接按 **Enter** 即可换行
+- 支持多行文本输入
 
-### Web 版替代方案
-1. 按 **Win+Shift+S** 系统截图
-2. 点击 **"上传图片"** 粘贴
+### 截图功能
+- 点击 **📷 截图(Ctrl+B)** 按钮，或按 **Ctrl+B**
+- 框选区域后点击"确定"
+- 图片会显示在文本框下方
 
 ## 本地构建
 
@@ -35,14 +30,14 @@ pnpm run electron:build
 ```
 
 ### 输出文件
-- `dist-electron/daily-planner-setup-1.4.4.exe`
+- `dist-electron/daily-planner-setup-1.4.5.exe`
 - `dist-electron/latest.yml`
 
 ## 发布流程
 
 ### GitHub Release
 1. 上传 exe 和 latest.yml
-2. 创建 tag: `v1.4.4`
+2. 创建 tag: `v1.4.5`
 
 ### Gitee Release
 1. 上传相同文件
