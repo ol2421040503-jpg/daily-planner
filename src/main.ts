@@ -5805,7 +5805,7 @@ class DailyPlanner {
                                 placeholder="输入操作说明...（支持换行）">${step.content || ''}</textarea>
                       
                       <!-- 图片显示区域 -->
-                      <div class="images-container mt-2 flex flex-wrap gap-2">
+                      <div id="images-container-${step.id}" class="images-container mt-2 flex flex-wrap gap-2">
                         ${(() => {
                           const allImages: string[] = [];
                           if (step.imageUrl) allImages.push(step.imageUrl);
@@ -5934,7 +5934,7 @@ class DailyPlanner {
     }
     
     // 更新图片显示区域
-    const imagesContainer = document.querySelector(`[data-step-id="${stepId}"]`)?.closest('.ml-11')?.querySelector('.images-container');
+    const imagesContainer = document.getElementById(`images-container-${stepId}`);
     if (imagesContainer) {
       const imgIndex = step.images.length - 1;
       const imgWrapper = document.createElement('div');
