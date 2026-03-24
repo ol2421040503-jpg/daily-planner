@@ -1784,7 +1784,7 @@ class DailyPlanner {
   // 清空所有通知
   public clearAllNotifications(): void {
     const notifications = this.getUnreadNotifications();
-    notifications.forEach(n => this.readNotificationIds.add(n.id));
+    notifications.forEach(n => this.clearedNotificationIds.add(n.id));
     this.saveNotificationState();
     this.render();
   }
@@ -6296,6 +6296,7 @@ class DailyPlanner {
   // 铃铛通知相关
   private showNotificationPanel: boolean = false;  // 显示通知面板
   private readNotificationIds: Set<string> = new Set();  // 已读通知ID
+  private clearedNotificationIds: Set<string> = new Set();  // 已清除通知ID（不在列表显示）
   
   // 获取未读通知列表
   private getUnreadNotifications(): { id: string; date: string; taskText: string; taskId: string; dateKey: string }[] {
@@ -6329,7 +6330,8 @@ class DailyPlanner {
     // 按日期排序
     notifications.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
-    return notifications;
+    // 过滤掉已清除的通知
+    return notifications.filter(n => !this.clearedNotificationIds.has(n.id));
   }
   
   // 获取未读通知数量
@@ -6355,6 +6357,7 @@ class DailyPlanner {
   // 保存通知状态
   private saveNotificationState(): void {
     localStorage.setItem('dailyPlanner_readNotifications', JSON.stringify([...this.readNotificationIds]));
+    localStorage.setItem('dailyPlanner_clearedNotifications', JSON.stringify([...this.clearedNotificationIds]));
   }
   
   // 加载通知状态
@@ -6365,6 +6368,15 @@ class DailyPlanner {
         this.readNotificationIds = new Set(JSON.parse(saved));
       } catch {
         this.readNotificationIds = new Set();
+      }
+    }
+    
+    const cleared = localStorage.getItem('dailyPlanner_clearedNotifications');
+    if (cleared) {
+      try {
+        this.clearedNotificationIds = new Set(JSON.parse(cleared));
+      } catch {
+        this.clearedNotificationIds = new Set();
       }
     }
   }
