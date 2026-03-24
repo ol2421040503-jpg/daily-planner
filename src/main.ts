@@ -5878,9 +5878,19 @@ class DailyPlanner {
                   ${step.content ? `<div class="ml-11 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'} whitespace-pre-wrap">${step.content}</div>` : ''}
                   ${allImages.length > 0 ? `
                     <div class="ml-11 mt-3 flex flex-wrap gap-2">
-                      ${allImages.map(img => `
-                        <img src="${img}" class="max-w-[200px] max-h-[150px] rounded-lg cursor-pointer hover:opacity-90" 
-                             onclick="planner.enlargeImage('${img}', '${step.id}')" />
+                      ${allImages.map((img, idx) => `
+                        <div class="inline-block relative group">
+                          <img src="${img}" class="max-w-[200px] max-h-[150px] rounded-lg cursor-pointer hover:opacity-90" 
+                               onclick="planner.enlargeImage('${img}', '${step.id}')" />
+                          <button class="absolute top-1 right-1 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                  style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;"
+                                  onclick="event.stopPropagation(); planner.removeImageFromViewer('${step.id}', ${idx})"
+                                  title="删除图片">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                          </button>
+                        </div>
                       `).join('')}
                     </div>
                   ` : ''}
@@ -5906,6 +5916,48 @@ class DailyPlanner {
     if (this.viewingGuideId && this.currentGuide) {
       this.editingGuideId = this.viewingGuideId;
       this.viewingGuideId = '';
+      this.render();
+    }
+  }
+  
+  // 从查看模式删除图片
+  public removeImageFromViewer(stepId: string, imageIndex: number): void {
+    if (!this.currentGuide) return;
+    
+    const step = this.currentGuide.steps.find(s => s.id === stepId);
+    if (!step) return;
+    
+    // 合并所有图片
+    const allImages: string[] = [];
+    if (step.imageUrl) allImages.push(step.imageUrl);
+    if (step.images && step.images.length > 0) {
+      step.images.forEach(img => {
+        if (!allImages.includes(img)) allImages.push(img);
+      });
+    }
+    
+    // 删除指定索引的图片
+    if (imageIndex >= 0 && imageIndex < allImages.length) {
+      const removedImage = allImages[imageIndex];
+      
+      // 从数组中移除
+      allImages.splice(imageIndex, 1);
+      
+      // 更新步骤数据
+      step.images = allImages.length > 0 ? allImages : undefined;
+      step.imageUrl = undefined;  // 清除旧字段
+      
+      // 同步更新原始数据
+      const originalGuide = this.knowledgeGuides.find(g => g.id === this.viewingGuideId);
+      if (originalGuide) {
+        const originalStep = originalGuide.steps.find(s => s.id === stepId);
+        if (originalStep) {
+          originalStep.images = step.images;
+          originalStep.imageUrl = undefined;
+        }
+        this.saveKnowledgeGuides();
+      }
+      
       this.render();
     }
   }
