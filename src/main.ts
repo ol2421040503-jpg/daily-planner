@@ -4894,7 +4894,15 @@ class DailyPlanner {
                 <span class="text-2xl">🥜</span>
               </div>
               <h3 class="text-base font-semibold ${textClass}">土味花生</h3>
-              <p class="text-xs ${labelClass}">每日规划 产品经理</p>
+              <p class="text-xs ${labelClass} mb-2">每日规划 产品经理</p>
+              <div class="flex items-center gap-2 p-2 ${isDark ? 'bg-gray-600' : 'bg-gray-100'} rounded-lg">
+                <div class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <p class="text-[10px] ${textClass}">2476651981@qq.com</p>
+              </div>
             </div>
           </div>
 
