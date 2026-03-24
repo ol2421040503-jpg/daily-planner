@@ -196,6 +196,7 @@ interface Task {
   time: string;
   priority: TaskPriority;
   tags: string[];  // 标签ID数组
+  guideId?: string; // 关联的知识库ID
 }
 
 interface DateTasks {
@@ -375,6 +376,7 @@ class DailyPlanner {
     this.holidayCache = this.loadHolidayCache();
     this.loadHolidaysForYear(this.currentDate.getFullYear());
     this.applyThemeMode();
+    this.loadNotificationState();  // 加载通知状态
     this.initElectronAPI();
     this.initPasteListener();  // 初始化粘贴监听（用于截图）
     this.startDateAutoUpdate();  // 启动日期自动更新
@@ -937,17 +939,20 @@ class DailyPlanner {
     const input = document.getElementById('taskInput') as HTMLTextAreaElement;
     const prioritySelect = document.getElementById('prioritySelect') as HTMLSelectElement;
     const timeSelect = document.getElementById('taskTimeInput') as HTMLSelectElement;
+    const guideSelect = document.getElementById('guideSelect') as HTMLSelectElement;
     const text = input?.value?.trim();
     const priority = prioritySelect?.value as TaskPriority || 'normal';
     const tags = Array.from(this.selectedTagsForTask);
     const time = timeSelect?.value || '';
+    const guideId = guideSelect?.value || '';
     
     if (!text) return;
     
-    this.addTask(text, priority, tags, time);
+    this.addTask(text, priority, tags, time, guideId);
     
     // 清空输入和选择
     if (input) input.value = '';
+    if (guideSelect) guideSelect.value = '';
     this.selectedTagsForTask.clear();
     this.preselectedTime = '';
   }
@@ -1713,6 +1718,60 @@ class DailyPlanner {
     }, 2000);
   }
 
+  // 生成通知面板HTML
+  private generateNotificationPanelHTML(): string {
+    const isDark = this.themeMode === 'dark';
+    const notifications = this.getUnreadNotifications();
+    const unreadCount = this.getUnreadCount();
+    
+    return `
+      <div class="absolute right-0 top-full mt-2 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-lg shadow-xl border w-80 max-h-96 overflow-hidden z-50">
+        <div class="flex items-center justify-between px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}">
+          <h3 class="font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}">待办提醒</h3>
+          ${unreadCount > 0 ? `
+            <button onclick="planner.markAllNotificationsRead()" class="text-xs ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-600'}">
+              全部已读
+            </button>
+          ` : ''}
+        </div>
+        <div class="overflow-y-auto max-h-72">
+          ${notifications.length > 0 ? notifications.map(n => {
+            const isRead = this.readNotificationIds.has(n.id);
+            const dateObj = new Date(n.date);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const diffDays = Math.ceil((dateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            let dateLabel = '';
+            if (diffDays === 0) dateLabel = '今天';
+            else if (diffDays === 1) dateLabel = '明天';
+            else if (diffDays === 2) dateLabel = '后天';
+            else dateLabel = `${dateObj.getMonth() + 1}月${dateObj.getDate()}日`;
+            
+            return `
+              <div onclick="planner.jumpToTaskFromNotification('${n.dateKey}', '${n.taskId}', '${n.id}')"
+                   class="px-4 py-3 border-b ${isDark ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-100 hover:bg-gray-50'} cursor-pointer transition-colors ${isRead ? 'opacity-60' : ''}">
+                <div class="flex items-start gap-2">
+                  ${!isRead ? `<span class="w-2 h-2 bg-red-500 rounded-full mt-1.5 flex-shrink-0"></span>` : '<span class="w-2"></span>'}
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm ${isDark ? 'text-gray-200' : 'text-gray-800'} truncate">${n.taskText}</p>
+                    <p class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-0.5">${dateLabel}</p>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('') : `
+            <div class="px-4 py-8 text-center ${isDark ? 'text-gray-400' : 'text-gray-500'}">
+              <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+              </svg>
+              <p class="text-sm">暂无待办提醒</p>
+            </div>
+          `}
+        </div>
+      </div>
+    `;
+  }
+
   // 生成保存状态HTML
   private generateSaveStatusHTML(): string {
     if (this.saveStatus === 'saved') {
@@ -2019,6 +2078,15 @@ class DailyPlanner {
   // 移动步骤
   public moveStep(stepId: string, direction: 'up' | 'down'): void {
     if (!this.currentGuide) return;
+    
+    // 先保存所有 textarea 的当前内容
+    this.currentGuide.steps.forEach(step => {
+      const textarea = document.getElementById(`step-content-${step.id}`) as HTMLTextAreaElement;
+      if (textarea) {
+        step.content = textarea.value;
+      }
+    });
+    
     const index = this.currentGuide.steps.findIndex(s => s.id === stepId);
     if (index === -1) return;
     
@@ -2642,7 +2710,7 @@ class DailyPlanner {
   }
 
   // 添加任务
-  private addTask(text: string, priority: TaskPriority = 'normal', tags: string[] = [], customTime?: string): void {
+  private addTask(text: string, priority: TaskPriority = 'normal', tags: string[] = [], customTime?: string, guideId?: string): void {
     // 验证：不允许添加空任务或只有空格的任务
     if (!text || text.trim() === '') {
       alert('请输入任务内容');
@@ -2663,7 +2731,8 @@ class DailyPlanner {
       date: dateKey,
       time: customTime || this.getCurrentTime(),
       priority: priority,
-      tags: tags
+      tags: tags,
+      guideId: guideId
     });
     this.saveTasks();
     this.render(); // 重新渲染整个页面
@@ -4290,6 +4359,15 @@ class DailyPlanner {
         }
       }
       
+      // 获取关联知识库显示HTML
+      let guideHTML = '';
+      if (task.guideId) {
+        const guide = this.knowledgeGuides.find(g => g.id === task.guideId);
+        if (guide) {
+          guideHTML = `<div class="mt-1"><button onclick="event.stopPropagation(); planner.openGuideFromTask('${task.guideId}')" class="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-purple-900/50 text-purple-300 hover:bg-purple-800/50' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'} transition-colors"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>${guide.name}</button></div>`;
+        }
+      }
+      
       tasksList += `
         <div class="flex items-start gap-2 p-2 ${taskBg} ${taskHover} rounded-lg group transition-colors border-l-4 ${borderColor} ${task.completed ? 'task-completed' : ''}"
              draggable="true"
@@ -4303,6 +4381,7 @@ class DailyPlanner {
           <div class="flex-1 min-w-0">
             <span class="task-text block text-sm ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} cursor-pointer whitespace-pre-wrap" title="双击编辑">${task.text}</span>
             ${taskTagsHTML}
+            ${guideHTML}
           </div>
           <div class="flex flex-col items-end gap-1 flex-shrink-0">
             <span class="text-[10px] text-gray-400">${task.time}</span>
@@ -4422,6 +4501,16 @@ class DailyPlanner {
                   +${this.getAllTags().length - 6}
                 </button>
               ` : ''}
+            </div>
+            <!-- 知识库选择器 -->
+            <div class="flex items-center gap-2 mt-2">
+              <span class="text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}">知识库：</span>
+              <select id="guideSelect" class="flex-1 px-2 py-1 text-xs border ${inputBg} rounded-lg ${isDark ? 'text-gray-100' : ''}">
+                <option value="">不关联</option>
+                ${this.knowledgeGuides.map(guide => `
+                  <option value="${guide.id}">${guide.name}</option>
+                `).join('')}
+              </select>
             </div>
           </div>
           
@@ -5459,6 +5548,30 @@ class DailyPlanner {
     this.render();
   }
   
+  // 从任务跳转到关联的知识库
+  public openGuideFromTask(guideId: string): void {
+    const guide = this.knowledgeGuides.find(g => g.id === guideId);
+    if (guide) {
+      this.showKnowledgeBase = true;
+      this.currentGuide = guide;
+      this.editingGuideId = guideId;
+      this.knowledgeSearchKeyword = '';
+      // 关闭任务面板
+      this.showTaskPanel = false;
+      this.selectedDate = null;
+      this.hoveredDate = null;
+      // 关闭其他弹窗
+      this.showStatsModal = false;
+      this.showCopyModal = false;
+      this.showThemeMenu = false;
+      this.showQuadrantView = false;
+      this.showWeeklySummary = false;
+      this.showMonthlySummary = false;
+      this.showYearlyStats = false;
+      this.render();
+    }
+  }
+  
   // 打开周总结（关闭其他面板）
   public openWeeklySummary(): void {
     this.showWeeklySummary = true;
@@ -5871,6 +5984,14 @@ class DailyPlanner {
     event.preventDefault();
     if (!this.currentGuide || this.draggedStepId === targetStepId) return;
     
+    // 先保存所有 textarea 的当前内容
+    this.currentGuide.steps.forEach(step => {
+      const textarea = document.getElementById(`step-content-${step.id}`) as HTMLTextAreaElement;
+      if (textarea) {
+        step.content = textarea.value;
+      }
+    });
+    
     const draggedIndex = this.currentGuide.steps.findIndex(s => s.id === this.draggedStepId);
     const targetIndex = this.currentGuide.steps.findIndex(s => s.id === targetStepId);
     
@@ -6054,6 +6175,118 @@ class DailyPlanner {
   
   // 保存状态提示
   private saveStatus: string = '';  // 'saving' | 'saved' | ''
+  
+  // 铃铛通知相关
+  private showNotificationPanel: boolean = false;  // 显示通知面板
+  private readNotificationIds: Set<string> = new Set();  // 已读通知ID
+  
+  // 获取未读通知列表
+  private getUnreadNotifications(): { id: string; date: string; taskText: string; taskId: string; dateKey: string }[] {
+    const notifications: { id: string; date: string; taskText: string; taskId: string; dateKey: string }[] = [];
+    const today = new Date();
+    const todayStr = this.formatDate(today);
+    
+    // 遍历所有任务，找出未完成的、即将到期的任务
+    Object.keys(this.tasks).forEach(dateKey => {
+      const tasks = this.tasks[dateKey];
+      tasks.forEach(task => {
+        if (!task.completed) {
+          // 计算距离今天的天数
+          const taskDate = new Date(dateKey);
+          const diffDays = Math.ceil((taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          
+          // 7天内到期的任务显示通知
+          if (diffDays >= 0 && diffDays <= 7) {
+            notifications.push({
+              id: `${task.id}-${dateKey}`,
+              date: dateKey,
+              taskText: task.text,
+              taskId: task.id,
+              dateKey: dateKey
+            });
+          }
+        }
+      });
+    });
+    
+    // 按日期排序
+    notifications.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    return notifications;
+  }
+  
+  // 获取未读通知数量
+  private getUnreadCount(): number {
+    const notifications = this.getUnreadNotifications();
+    return notifications.filter(n => !this.readNotificationIds.has(n.id)).length;
+  }
+  
+  // 标记通知为已读
+  public markNotificationRead(notificationId: string): void {
+    this.readNotificationIds.add(notificationId);
+    this.saveNotificationState();
+  }
+  
+  // 标记所有通知为已读
+  public markAllNotificationsRead(): void {
+    const notifications = this.getUnreadNotifications();
+    notifications.forEach(n => this.readNotificationIds.add(n.id));
+    this.saveNotificationState();
+    this.render();
+  }
+  
+  // 保存通知状态
+  private saveNotificationState(): void {
+    localStorage.setItem('dailyPlanner_readNotifications', JSON.stringify([...this.readNotificationIds]));
+  }
+  
+  // 加载通知状态
+  private loadNotificationState(): void {
+    const saved = localStorage.getItem('dailyPlanner_readNotifications');
+    if (saved) {
+      try {
+        this.readNotificationIds = new Set(JSON.parse(saved));
+      } catch {
+        this.readNotificationIds = new Set();
+      }
+    }
+  }
+  
+  // 切换通知面板显示
+  public toggleNotificationPanel(): void {
+    this.showNotificationPanel = !this.showNotificationPanel;
+    if (this.showNotificationPanel) {
+      this.showThemeMenu = false;
+    }
+    this.render();
+  }
+  
+  // 从通知跳转到任务
+  public jumpToTaskFromNotification(dateKey: string, taskId: string, notificationId: string): void {
+    // 标记为已读
+    this.markNotificationRead(notificationId);
+    
+    // 关闭通知面板
+    this.showNotificationPanel = false;
+    
+    // 设置选中日期
+    this.selectedDate = new Date(dateKey);
+    this.showTaskPanel = true;
+    
+    this.render();
+    
+    // 延迟滚动到任务
+    setTimeout(() => {
+      const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+      if (taskElement) {
+        taskElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        taskElement.classList.add('ring-2', 'ring-blue-500');
+        setTimeout(() => {
+          taskElement.classList.remove('ring-2', 'ring-blue-500');
+        }, 2000);
+      }
+    }, 300);
+  }
 
   // 处理粘贴图片
   public handlePaste(event: ClipboardEvent): void {
@@ -7276,6 +7509,19 @@ class DailyPlanner {
                     </div>
                   </div>
                 ` : ''}
+              </div>
+              <div class="relative">
+                <button onclick="event.stopPropagation(); planner.toggleNotificationPanel()"
+                        class="p-2 ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-white hover:bg-gray-100'} rounded-lg transition-colors shadow-md relative"
+                        title="通知">
+                  <svg class="w-5 h-5 ${isDark ? 'text-gray-200' : 'text-gray-700'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                  </svg>
+                  ${this.getUnreadCount() > 0 ? `
+                    <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">${this.getUnreadCount() > 9 ? '9+' : this.getUnreadCount()}</span>
+                  ` : ''}
+                </button>
+                ${this.showNotificationPanel ? this.generateNotificationPanelHTML() : ''}
               </div>
               <div class="relative">
                 <button onclick="event.stopPropagation(); planner.toggleMoreMenu()"
