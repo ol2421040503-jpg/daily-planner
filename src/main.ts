@@ -1729,11 +1729,19 @@ class DailyPlanner {
       <div class="absolute right-0 top-full mt-2 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-lg shadow-xl border w-80 max-h-96 overflow-hidden z-50">
         <div class="flex items-center justify-between px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}">
           <h3 class="font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}">待办提醒</h3>
-          ${unreadCount > 0 ? `
-            <button onclick="planner.markAllNotificationsRead()" class="text-xs ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-600'}">
-              全部已读
-            </button>
-          ` : ''}
+          <div class="flex items-center gap-2">
+            ${notifications.length > 0 ? `
+              <button onclick="planner.clearAllNotifications()" class="text-xs ${isDark ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-600'}">
+                清空列表
+              </button>
+            ` : ''}
+            ${unreadCount > 0 ? `
+              <span class="${isDark ? 'text-gray-600' : 'text-gray-300'}">|</span>
+              <button onclick="planner.markAllNotificationsRead()" class="text-xs ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-600'}">
+                全部已读
+              </button>
+            ` : ''}
+          </div>
         </div>
         <div class="overflow-y-auto max-h-72">
           ${notifications.length > 0 ? notifications.map(n => {
@@ -1771,6 +1779,14 @@ class DailyPlanner {
         </div>
       </div>
     `;
+  }
+  
+  // 清空所有通知
+  public clearAllNotifications(): void {
+    const notifications = this.getUnreadNotifications();
+    notifications.forEach(n => this.readNotificationIds.add(n.id));
+    this.saveNotificationState();
+    this.render();
   }
 
   // 生成保存状态HTML
