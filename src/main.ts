@@ -4099,6 +4099,11 @@ class DailyPlanner {
 
   // 关闭任务面板
   private closeTaskPanel(): void {
+    // 清除悬停定时器
+    if (this.hoverTimer !== null) {
+      clearTimeout(this.hoverTimer);
+      this.hoverTimer = null;
+    }
     this.selectedDate = null;
     this.hoveredDate = null;
     this.showTaskPanel = false;
@@ -7937,7 +7942,7 @@ class DailyPlanner {
     app.innerHTML = `
       ${windowControls}
       <div class="min-h-screen bg-gradient-to-br ${bgFrom} ${bgTo} ${window.electronAPI ? 'pt-10' : 'py-8'} px-4 transition-colors" tabindex="0" id="main-container"
-           onclick="if(planner.showTaskPanel && !event.target.closest('.task-panel') && !event.target.closest('[data-date]')) { planner.showTaskPanel = false; planner.render(); }">
+           onclick="if(planner.showTaskPanel && !event.target.closest('.task-panel') && !event.target.closest('[data-date]')) { planner.closeTaskPanel(); }">
         <div class="max-w-4xl mx-auto">
           <div class="flex items-center justify-between mb-6 relative z-50 flex-wrap gap-2">
             <h1 class="text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}">${this.viewMode === 'month' ? '每日规划' : '周规划'}</h1>
