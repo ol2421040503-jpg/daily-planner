@@ -2418,7 +2418,9 @@ class DailyPlanner {
     if (hasKeyword && filteredGuides.length === 0) {
       guideListContainer.innerHTML = `
         <div class="text-center py-12">
-          <div class="text-6xl mb-4">🔍</div>
+          <svg class="w-16 h-16 mx-auto mb-4 ${isDark ? 'text-gray-600' : 'text-gray-300'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
           <p class="${isDark ? 'text-gray-400' : 'text-gray-500'}">没有找到匹配的内容</p>
           <p class="text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'} mt-2">尝试其他关键词</p>
         </div>
@@ -5797,7 +5799,9 @@ class DailyPlanner {
           <button onclick="event.stopPropagation(); planner.openWeeklySummary();"
                   class="flex-1 flex flex-col items-center gap-1 p-3 rounded-lg ${isDark ? 'bg-gray-600 hover:bg-gray-500' : 'bg-white hover:bg-gray-100'} shadow-sm transition-all group">
             <div class="flex items-center gap-2">
-              <span class="text-lg">📊</span>
+              <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+              </svg>
               <span class="text-sm font-medium ${textClass}">周总结</span>
             </div>
             <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">${weeklyRate}% 完成</div>
@@ -5805,7 +5809,9 @@ class DailyPlanner {
           <button onclick="event.stopPropagation(); planner.openMonthlySummary();"
                   class="flex-1 flex flex-col items-center gap-1 p-3 rounded-lg ${isDark ? 'bg-gray-600 hover:bg-gray-500' : 'bg-white hover:bg-gray-100'} shadow-sm transition-all group">
             <div class="flex items-center gap-2">
-              <span class="text-lg">📈</span>
+              <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
               <span class="text-sm font-medium ${textClass}">月总结</span>
             </div>
             <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">本月表现</div>
@@ -5813,7 +5819,9 @@ class DailyPlanner {
           <button onclick="event.stopPropagation(); planner.openYearlyStats();"
                   class="flex-1 flex flex-col items-center gap-1 p-3 rounded-lg ${isDark ? 'bg-gray-600 hover:bg-gray-500' : 'bg-white hover:bg-gray-100'} shadow-sm transition-all group">
             <div class="flex items-center gap-2">
-              <span class="text-lg">🎊</span>
+              <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+              </svg>
               <span class="text-sm font-medium ${textClass}">年度总结</span>
             </div>
             <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}">年度回顾</div>
@@ -5823,7 +5831,9 @@ class DailyPlanner {
         <div class="mt-3 pt-3 border-t ${isDark ? 'border-gray-600' : 'border-gray-200'}">
           <button onclick="event.stopPropagation(); planner.openKnowledgeBase();"
                   class="w-full flex items-center justify-center gap-2 p-3 rounded-lg ${isDark ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500' : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-400 hover:to-blue-400'} text-white shadow-md transition-all">
-            <span class="text-lg">📚</span>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+            </svg>
             <span class="text-sm font-medium">个人知识库</span>
             <span class="text-xs opacity-75">(${this.knowledgeGuides.length})</span>
           </button>
@@ -6012,7 +6022,9 @@ class DailyPlanner {
             if (this.knowledgeGuides.length === 0) {
               return `
                 <div class="text-center py-12">
-                  <div class="text-6xl mb-4">📖</div>
+                  <svg class="w-16 h-16 mx-auto mb-4 ${isDark ? 'text-gray-600' : 'text-gray-300'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                  </svg>
                   <p class="${isDark ? 'text-gray-400' : 'text-gray-500'}">还没有任何指南</p>
                   <p class="text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'} mt-2">点击上方按钮创建你的第一个指南，或导入已有知识库</p>
                 </div>
@@ -6022,7 +6034,9 @@ class DailyPlanner {
             if (hasKeyword && filteredGuides.length === 0) {
               return `
                 <div class="text-center py-12">
-                  <div class="text-6xl mb-4">🔍</div>
+                  <svg class="w-16 h-16 mx-auto mb-4 ${isDark ? 'text-gray-600' : 'text-gray-300'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                  </svg>
                   <p class="${isDark ? 'text-gray-400' : 'text-gray-500'}">没有找到匹配的内容</p>
                   <p class="text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'} mt-2">尝试其他关键词</p>
                 </div>
@@ -6772,7 +6786,12 @@ class DailyPlanner {
                 </svg>
               </button>
               <div class="text-center min-w-[120px]">
-                <h2 class="text-xl font-bold ${textClass}">📊 ${weekTitle}</h2>
+                <h2 class="text-xl font-bold ${textClass} flex items-center gap-2">
+                  <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                  </svg>
+                  ${weekTitle}
+                </h2>
                 <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${stats.byDay[0].date} ~ ${stats.byDay[6].date}</p>
               </div>
               <!-- 右箭头 -->
@@ -7005,7 +7024,12 @@ class DailyPlanner {
                 </svg>
               </button>
               <div class="text-center min-w-[120px]">
-                <h2 class="text-xl font-bold ${textClass}">📊 ${monthTitle}</h2>
+                <h2 class="text-xl font-bold ${textClass} flex items-center gap-2">
+                  <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                  </svg>
+                  ${monthTitle}
+                </h2>
                 <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${year}年</p>
               </div>
               <!-- 右箭头 -->
@@ -7237,7 +7261,12 @@ class DailyPlanner {
                 </svg>
               </button>
               <div class="text-center min-w-[150px]">
-                <h2 class="text-2xl font-bold ${textClass}">🎊 ${yearTitle}</h2>
+                <h2 class="text-2xl font-bold ${textClass} flex items-center gap-2">
+                  <svg class="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                  </svg>
+                  ${yearTitle}
+                </h2>
                 <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${currentYear}年</p>
               </div>
               <!-- 右箭头 -->
@@ -7496,7 +7525,12 @@ class DailyPlanner {
         <div class="${bgClass} rounded-xl shadow-2xl p-6 w-full max-w-md"
              onclick="event.stopPropagation()">
           <div class="flex items-center justify-between mb-6">
-            <h2 class="text-xl font-bold ${textClass}">🔔 提醒设置</h2>
+            <h2 class="text-xl font-bold ${textClass} flex items-center gap-2">
+              <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+              </svg>
+              提醒设置
+            </h2>
             <button onclick="planner.showReminderSettings = false; planner.render();"
                     class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
               <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
