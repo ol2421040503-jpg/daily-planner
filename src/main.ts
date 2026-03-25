@@ -2442,7 +2442,11 @@ class DailyPlanner {
                  onclick="planner.openGuideEdit('${guide.id}')">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                  <span class="text-2xl flex-shrink-0">📋</span>
+                  <span class="w-8 h-8 flex items-center justify-center bg-purple-100 dark:bg-purple-900/50 rounded-lg flex-shrink-0">
+                    <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                  </span>
                   <div class="flex-1 min-w-0">
                     <h3 class="font-medium ${textClass} truncate">${this.highlightKeyword(guide.name, this.knowledgeSearchKeyword)}</h3>
                     <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${guide.steps.length} 个步骤 · 更新于 ${new Date(guide.updatedAt).toLocaleDateString()}</p>
@@ -3916,10 +3920,10 @@ class DailyPlanner {
             <span class="task-text flex-1 ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} cursor-pointer">${task.text}</span>
             <select onchange="planner.updateTaskPriority('${task.id}', this.value)"
                     class="text-xs px-2 py-1 rounded ${priorityBg} ${priorityColor} border-0 cursor-pointer whitespace-nowrap">
-              <option value="urgent-important" ${taskPriority === 'urgent-important' ? 'selected' : ''}>🔴紧急重要</option>
-              <option value="important" ${taskPriority === 'important' ? 'selected' : ''}>🟡重要不急</option>
-              <option value="urgent" ${taskPriority === 'urgent' ? 'selected' : ''}>🟠紧急不重要</option>
-              <option value="normal" ${taskPriority === 'normal' ? 'selected' : ''}>⚪不重要不急</option>
+              <option value="urgent-important" ${taskPriority === 'urgent-important' ? 'selected' : ''}>紧急重要</option>
+              <option value="important" ${taskPriority === 'important' ? 'selected' : ''}>重要不急</option>
+              <option value="urgent" ${taskPriority === 'urgent' ? 'selected' : ''}>紧急不重要</option>
+              <option value="normal" ${taskPriority === 'normal' ? 'selected' : ''}>普通</option>
             </select>
             <span class="text-xs text-gray-400">${task.time}</span>
             <button onclick="planner.startEditTask('${task.id}')"
@@ -3957,7 +3961,12 @@ class DailyPlanner {
       anniversaryHtml = `
         <div class="mb-3 p-2 bg-pink-100 dark:bg-pink-900/30 rounded-lg">
           ${todayAnniversaries.map(a => `
-            <span class="text-pink-600 dark:text-pink-400 text-sm">🎉 ${a.name} (${a.type === 'birthday' ? '生日' : a.type === 'anniversary' ? '纪念日' : '自定义'})</span>
+            <span class="text-pink-600 dark:text-pink-400 text-sm inline-flex items-center gap-1">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
+              ${a.name} (${a.type === 'birthday' ? '生日' : a.type === 'anniversary' ? '纪念日' : '自定义'})
+            </span>
           `).join('')}
         </div>
       `;
@@ -3995,10 +4004,10 @@ class DailyPlanner {
                    class="flex-1 px-4 py-2 border ${inputBg} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDark ? 'text-gray-100 placeholder-gray-400' : ''}"
                    onkeypress="if(event.key === 'Enter') planner.handleAddTask()">
             <select id="prioritySelect" class="px-3 py-2 border ${inputBg} rounded-lg ${isDark ? 'text-gray-100' : ''}">
-              <option value="urgent-important">🔴紧急重要</option>
-              <option value="important">🟡重要不急</option>
-              <option value="urgent">🟠紧急不重要</option>
-              <option value="normal" selected>⚪不重要不急</option>
+              <option value="urgent-important">紧急重要</option>
+              <option value="important">重要不急</option>
+              <option value="urgent">紧急不重要</option>
+              <option value="normal" selected>普通</option>
             </select>
             <button onclick="planner.handleAddTask()"
                     class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
@@ -4639,10 +4648,10 @@ class DailyPlanner {
             <span class="text-[10px] text-gray-400">${task.time}</span>
             <select onchange="planner.updateTaskPriority('${task.id}', this.value)"
                     class="text-[10px] px-1 py-0.5 rounded ${priorityBg} ${priorityColor} border-0 cursor-pointer">
-              <option value="urgent-important" ${taskPriority === 'urgent-important' ? 'selected' : ''}>🔴</option>
-              <option value="important" ${taskPriority === 'important' ? 'selected' : ''}>🟡</option>
-              <option value="urgent" ${taskPriority === 'urgent' ? 'selected' : ''}>🟠</option>
-              <option value="normal" ${taskPriority === 'normal' ? 'selected' : ''}>⚪</option>
+              <option value="urgent-important" ${taskPriority === 'urgent-important' ? 'selected' : ''}>紧急</option>
+              <option value="important" ${taskPriority === 'important' ? 'selected' : ''}>重要</option>
+              <option value="urgent" ${taskPriority === 'urgent' ? 'selected' : ''}>急办</option>
+              <option value="normal" ${taskPriority === 'normal' ? 'selected' : ''}>普通</option>
             </select>
           </div>
           <div class="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -4680,7 +4689,12 @@ class DailyPlanner {
       anniversaryHtml = `
         <div class="mb-2 p-2 bg-pink-100 dark:bg-pink-900/30 rounded-lg">
           ${todayAnniversaries.map(a => `
-            <span class="text-pink-600 dark:text-pink-400 text-xs">🎉 ${a.name}</span>
+            <span class="text-pink-600 dark:text-pink-400 text-xs inline-flex items-center gap-1">
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
+              ${a.name}
+            </span>
           `).join('')}
         </div>
       `;
@@ -4735,10 +4749,10 @@ class DailyPlanner {
                 ).join('')}
               </select>
               <select id="prioritySelect" class="flex-1 px-2 py-1.5 text-xs border ${inputBg} rounded-lg ${isDark ? 'text-gray-100' : ''}">
-                <option value="urgent-important">🔴 紧急重要</option>
-                <option value="important">🟡 重要不急</option>
-                <option value="urgent">🟠 紧急不重要</option>
-                <option value="normal" selected>⚪ 普通</option>
+                <option value="urgent-important">紧急重要</option>
+                <option value="important">重要不急</option>
+                <option value="urgent">紧急不重要</option>
+                <option value="normal" selected>普通</option>
               </select>
               <button onclick="planner.handleAddTask()"
                       class="px-4 py-1.5 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors">
@@ -4868,7 +4882,11 @@ class DailyPlanner {
               </div>
             ` : this.updateAvailable && this.updateInfo ? `
               <div class="text-center py-4">
-                <div class="text-6xl mb-4">🎉</div>
+                <div class="w-16 h-16 mx-auto mb-4 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center">
+                  <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                  </svg>
+                </div>
                 <h3 class="text-lg font-semibold ${textClass} mb-2">发现新版本</h3>
                 <p class="${isDark ? 'text-gray-400' : 'text-gray-600'} mb-1">
                   最新版本: <span class="font-medium ${textClass}">${this.updateInfo.version}</span>
@@ -6058,7 +6076,11 @@ class DailyPlanner {
                          onclick="planner.openGuideEdit('${guide.id}')">
                       <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3 flex-1 min-w-0">
-                          <span class="text-2xl flex-shrink-0">📋</span>
+                          <span class="w-8 h-8 flex items-center justify-center bg-purple-100 dark:bg-purple-900/50 rounded-lg flex-shrink-0">
+                            <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                          </span>
                           <div class="flex-1 min-w-0">
                             <h3 class="font-medium ${textClass} truncate">${this.highlightKeyword(guide.name, this.knowledgeSearchKeyword)}</h3>
                             <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">${guide.steps.length} 个步骤 · 更新于 ${new Date(guide.updatedAt).toLocaleDateString()}</p>
@@ -6909,7 +6931,12 @@ class DailyPlanner {
           <!-- 周总结文字区域 -->
           <div class="mt-4">
             <div class="flex items-center justify-between mb-2">
-              <h3 class="text-sm font-semibold ${textClass}">📝 ${this.viewingWeekOffset === 0 ? '本周' : '该周'}感想</h3>
+              <h3 class="text-sm font-semibold ${textClass} flex items-center gap-1">
+                <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                ${this.viewingWeekOffset === 0 ? '本周' : '该周'}感想
+              </h3>
               <button onclick="const textarea = document.getElementById('weekly-note-textarea'); planner.saveWeeklySummaryNoteWithStatus(textarea.value);"
                       class="px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center gap-1">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -7131,7 +7158,12 @@ class DailyPlanner {
           <!-- 月总结文字区域 -->
           <div class="mt-4">
             <div class="flex items-center justify-between mb-2">
-              <h3 class="text-sm font-semibold ${textClass}">📝 ${this.viewingMonthOffset === 0 ? '本月' : '该月'}感想</h3>
+              <h3 class="text-sm font-semibold ${textClass} flex items-center gap-1">
+                <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                ${this.viewingMonthOffset === 0 ? '本月' : '该月'}感想
+              </h3>
               <button onclick="const textarea = document.getElementById('monthly-note-textarea'); planner.saveMonthlySummaryNoteWithStatus(textarea.value);"
                       class="px-3 py-1 text-xs bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors flex items-center gap-1">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -7417,7 +7449,12 @@ class DailyPlanner {
           <!-- 年度总结文字区域 -->
           <div class="mt-4">
             <div class="flex items-center justify-between mb-2">
-              <h3 class="text-sm font-semibold ${textClass}">📝 ${this.viewingYearOffset === 0 ? '本年度' : '该年度'}感想</h3>
+              <h3 class="text-sm font-semibold ${textClass} flex items-center gap-1">
+                <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                ${this.viewingYearOffset === 0 ? '本年度' : '该年度'}感想
+              </h3>
               <button onclick="const textarea = document.getElementById('yearly-note-textarea'); planner.saveYearlySummaryNoteWithStatus(textarea.value);"
                       class="px-3 py-1 text-xs bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors flex items-center gap-1">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -7564,7 +7601,7 @@ class DailyPlanner {
             <div class="p-4 ${cardBg} rounded-lg border-l-4 border-red-500">
               <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-2">
-                  <span class="text-2xl">🔴</span>
+                  <span class="w-4 h-4 bg-red-500 rounded-full"></span>
                   <span class="font-medium ${textClass}">高优先级任务</span>
                 </div>
                 <span class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">提前 ${this.reminderConfig.high} 天</span>
@@ -7576,7 +7613,7 @@ class DailyPlanner {
             <div class="p-4 ${cardBg} rounded-lg border-l-4 border-yellow-500">
               <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-2">
-                  <span class="text-2xl">🟡</span>
+                  <span class="w-4 h-4 bg-yellow-500 rounded-full"></span>
                   <span class="font-medium ${textClass}">中优先级任务</span>
                 </div>
                 <span class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">提前 ${this.reminderConfig.medium} 天</span>
@@ -7588,7 +7625,7 @@ class DailyPlanner {
             <div class="p-4 ${cardBg} rounded-lg border-l-4 border-green-500">
               <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-2">
-                  <span class="text-2xl">🟢</span>
+                  <span class="w-4 h-4 bg-green-500 rounded-full"></span>
                   <span class="font-medium ${textClass}">低优先级任务</span>
                 </div>
                 <span class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}">提前 ${this.reminderConfig.low} 天</span>
