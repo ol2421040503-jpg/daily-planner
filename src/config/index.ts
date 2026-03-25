@@ -14,7 +14,7 @@ import type {
 } from '../types';
 
 // ==================== 版本配置 ====================
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '1.6.1';
 export const VERSION_CHECK_URL = 'https://your-server.com/api/version';
 
 /** 版本更新日志 */
