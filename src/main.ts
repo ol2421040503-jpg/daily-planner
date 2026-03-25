@@ -6,7 +6,7 @@
  * 
  * @author 严辉村高斯林
  * @license MIT
- * @version 1.5.9
+ * @version 1.6.0
  */
 
 import './index.css';
