@@ -3833,7 +3833,7 @@ class DailyPlanner {
     this.showQuadrantView = false;
     this.currentGuide = null;
     
-    this.render(); // 重新渲染整个页面，确保面板显示正确的日期和任务
+    this.render(); // 重新渲染页面
   }
 
   // 鼠标悬停日期（临时显示）
@@ -4475,7 +4475,7 @@ class DailyPlanner {
              data-date="${dateKey}"
              onmouseenter="planner.hoverDate(new Date(${d.getFullYear()}, ${d.getMonth()}, ${d.getDate()}))"
              onmouseleave="planner.leaveDate()"
-             onclick="planner.selectDate(new Date(${d.getFullYear()}, ${d.getMonth()}, ${d.getDate()}))">
+             onclick="event.stopPropagation(); planner.selectDate(new Date(${d.getFullYear()}, ${d.getMonth()}, ${d.getDate()}))">
           <!-- 日期头部 -->
           <div class="flex items-start justify-between p-1">
             <div class="flex flex-col">
