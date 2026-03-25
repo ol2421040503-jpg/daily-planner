@@ -6,7 +6,7 @@
  * 
  * @author 严辉村高斯林
  * @license MIT
- * @version 1.6.1
+ * @version 1.6.2
  */
 
 import './index.css';
@@ -113,6 +113,16 @@ function getPriorityConfig(priority: string | undefined): typeof PRIORITY_CONFIG
 function parseLocalDate(dateStr: string): Date {
   const [year, month, day] = dateStr.split('-').map(Number);
   return new Date(year, month - 1, day);
+}
+
+// 通知项类型
+interface NotificationItem {
+  id: string;
+  date: string;
+  taskText: string;
+  taskId: string;
+  dateKey: string;
+  diffDays?: number;  // 距离今天的天数（负数表示逾期）
 }
 
 // 标签类型
@@ -1869,27 +1879,28 @@ class DailyPlanner {
         <div class="overflow-y-auto max-h-72">
           ${notifications.length > 0 ? notifications.map(n => {
             const isRead = this.readNotificationIds.has(n.id);
+            const diffDays = n.diffDays || 0;
             // 修复日期解析：使用本地时间解析日期字符串，避免UTC时区问题
             const [year, month, day] = n.date.split('-').map(Number);
             const dateObj = new Date(year, month - 1, day);
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            const diffDays = Math.round((dateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            const isOverdue = diffDays < 0;
             let dateLabel = '';
             if (diffDays === 0) dateLabel = '今天';
             else if (diffDays === 1) dateLabel = '明天';
             else if (diffDays === 2) dateLabel = '后天';
-            else if (diffDays < 0) dateLabel = `${Math.abs(diffDays)}天前`;
+            else if (diffDays < 0) dateLabel = `逾期${Math.abs(diffDays)}天`;
             else dateLabel = `${dateObj.getMonth() + 1}月${dateObj.getDate()}日`;
             
             return `
               <div onclick="planner.jumpToTaskFromNotification('${n.dateKey}', '${n.taskId}', '${n.id}')"
-                   class="px-4 py-3 border-b ${isDark ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-100 hover:bg-gray-50'} cursor-pointer transition-colors ${isRead ? 'opacity-60' : ''}">
+                   class="px-4 py-3 border-b ${isDark ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-100 hover:bg-gray-50'} cursor-pointer transition-colors ${isRead ? 'opacity-60' : ''} ${isOverdue ? (isDark ? 'bg-red-900/20' : 'bg-red-50') : ''}">
                 <div class="flex items-start gap-2">
-                  ${!isRead ? `<span class="w-2 h-2 bg-red-500 rounded-full mt-1.5 flex-shrink-0"></span>` : '<span class="w-2"></span>'}
+                  ${!isRead ? `<span class="w-2 h-2 ${isOverdue ? 'bg-red-500' : 'bg-red-500'} rounded-full mt-1.5 flex-shrink-0"></span>` : '<span class="w-2"></span>'}
                   <div class="flex-1 min-w-0">
                     <p class="text-sm ${isDark ? 'text-gray-200' : 'text-gray-800'} truncate">${n.taskText}</p>
-                    <p class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-0.5">${dateLabel}</p>
+                    <p class="text-xs ${isOverdue ? 'text-red-500 font-medium' : (isDark ? 'text-gray-400' : 'text-gray-500')} mt-0.5">${dateLabel}</p>
                   </div>
                 </div>
               </div>
@@ -6545,8 +6556,8 @@ class DailyPlanner {
   private clearedNotificationIds: Set<string> = new Set();  // 已清除通知ID（不在列表显示）
   
   // 获取未读通知列表
-  private getUnreadNotifications(): { id: string; date: string; taskText: string; taskId: string; dateKey: string }[] {
-    const notifications: { id: string; date: string; taskText: string; taskId: string; dateKey: string }[] = [];
+  private getUnreadNotifications(): NotificationItem[] {
+    const notifications: NotificationItem[] = [];
     const today = new Date();
     const todayStr = this.formatDate(today);
     
@@ -6559,22 +6570,29 @@ class DailyPlanner {
           const taskDate = parseLocalDate(dateKey);
           const diffDays = Math.round((taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
           
-          // 7天内到期的任务显示通知
-          if (diffDays >= 0 && diffDays <= 7) {
+          // 显示：逾期未完成任务 + 未来7天内到期的任务
+          if (diffDays <= 7) {
             notifications.push({
               id: `${task.id}-${dateKey}`,
               date: dateKey,
               taskText: task.text,
               taskId: task.id,
-              dateKey: dateKey
+              dateKey: dateKey,
+              diffDays: diffDays  // 添加天数差，用于排序
             });
           }
         }
       });
     });
     
-    // 按日期排序
-    notifications.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // 按日期排序（逾期任务排最前面，然后是今天和未来任务）
+    notifications.sort((a, b) => {
+      // 逾期任务排最前面，按逾期天数倒序（逾期最多的排最前）
+      if (a.diffDays! < 0 && b.diffDays! >= 0) return -1;
+      if (a.diffDays! >= 0 && b.diffDays! < 0) return 1;
+      // 同类型按日期排序
+      return a.diffDays! - b.diffDays!;
+    });
     
     // 过滤掉已清除的通知
     return notifications.filter(n => !this.clearedNotificationIds.has(n.id));
