@@ -109,6 +109,12 @@ function getPriorityConfig(priority: string | undefined): typeof PRIORITY_CONFIG
   return PRIORITY_CONFIG['normal'];
 }
 
+// 解析日期字符串为本地时间（避免 UTC 时区问题）
+function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
 // 标签类型
 interface Tag {
   id: string;
@@ -1863,14 +1869,17 @@ class DailyPlanner {
         <div class="overflow-y-auto max-h-72">
           ${notifications.length > 0 ? notifications.map(n => {
             const isRead = this.readNotificationIds.has(n.id);
-            const dateObj = new Date(n.date);
+            // 修复日期解析：使用本地时间解析日期字符串，避免UTC时区问题
+            const [year, month, day] = n.date.split('-').map(Number);
+            const dateObj = new Date(year, month - 1, day);
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            const diffDays = Math.ceil((dateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            const diffDays = Math.round((dateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
             let dateLabel = '';
             if (diffDays === 0) dateLabel = '今天';
             else if (diffDays === 1) dateLabel = '明天';
             else if (diffDays === 2) dateLabel = '后天';
+            else if (diffDays < 0) dateLabel = `${Math.abs(diffDays)}天前`;
             else dateLabel = `${dateObj.getMonth() + 1}月${dateObj.getDate()}日`;
             
             return `
@@ -3218,7 +3227,7 @@ class DailyPlanner {
 
   // 跳转到日期
   private jumpToDate(dateStr: string): void {
-    const date = new Date(dateStr);
+    const date = parseLocalDate(dateStr);
     this.currentDate = new Date(date);
     this.selectedDate = new Date(date);
     this.showSearchPanel = false;
@@ -3454,7 +3463,7 @@ class DailyPlanner {
       const hasCompletedTask = dayTasks.some(t => t.completed);
       
       if (hasCompletedTask) {
-        const currentDate = new Date(dateKey);
+        const currentDate = parseLocalDate(dateKey);
         
         if (prevDate) {
           const diffDays = Math.floor((currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -4149,7 +4158,7 @@ class DailyPlanner {
     const endDate = new Date(this.quadrantEndDate);
 
     Object.entries(this.tasks).forEach(([dateKey, tasks]) => {
-      const taskDate = new Date(dateKey);
+      const taskDate = parseLocalDate(dateKey);
       if (taskDate >= startDate && taskDate <= endDate) {
         tasks.forEach(task => {
           const priority = task.priority || 'normal';
@@ -6547,8 +6556,8 @@ class DailyPlanner {
       tasks.forEach(task => {
         if (!task.completed) {
           // 计算距离今天的天数
-          const taskDate = new Date(dateKey);
-          const diffDays = Math.ceil((taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          const taskDate = parseLocalDate(dateKey);
+          const diffDays = Math.round((taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
           
           // 7天内到期的任务显示通知
           if (diffDays >= 0 && diffDays <= 7) {
@@ -6637,7 +6646,7 @@ class DailyPlanner {
     this.showNotificationPanel = false;
     
     // 设置选中日期
-    this.selectedDate = new Date(dateKey);
+    this.selectedDate = parseLocalDate(dateKey);
     this.showTaskPanel = true;
     
     this.render();
