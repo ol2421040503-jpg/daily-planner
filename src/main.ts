@@ -3762,7 +3762,7 @@ class DailyPlanner {
       if (task && newText.trim()) {
         task.text = newText.trim();
         this.saveTasks();
-        this.render();
+        this.updateTaskPanel();
       }
     }
   }
@@ -3780,20 +3780,26 @@ class DailyPlanner {
           if (textSpan) {
             const currentText = task.text;
             const isDark = this.themeMode === 'dark';
+            // 转义 HTML 特殊字符
+            const escapedText = currentText
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;');
             textSpan.innerHTML = `
               <div class="flex items-center gap-2 w-full">
                 <input type="text" 
                        id="edit-input-${taskId}"
-                       class="flex-1 min-w-0 px-2 py-1 border ${isDark ? 'bg-gray-600 border-gray-500 text-gray-100' : 'bg-white border-gray-300 text-gray-700'} rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       value="${currentText.replace(/"/g, '&quot;')}"
-                       onkeydown="if(event.key === 'Enter') { event.preventDefault(); planner.editTask('${taskId}', this.value); } else if(event.key === 'Escape') { planner.render(); }"
+                       class="flex-1 min-w-0 px-3 py-2 border ${isDark ? 'bg-gray-600 border-gray-500 text-gray-100' : 'bg-white border-gray-300 text-gray-700'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                       value="${escapedText}"
+                       onkeydown="if(event.key === 'Enter') { event.preventDefault(); planner.editTask('${taskId}', this.value); } else if(event.key === 'Escape') { planner.updateTaskPanel(); }"
                        autofocus>
                 <button onclick="planner.editTask('${taskId}', document.getElementById('edit-input-${taskId}').value)"
-                        class="flex-shrink-0 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded transition-colors">
+                        class="flex-shrink-0 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded-lg transition-colors">
                   保存
                 </button>
-                <button onclick="planner.render()"
-                        class="flex-shrink-0 px-2 py-1 bg-gray-300 hover:bg-gray-400 text-gray-700 text-xs rounded transition-colors">
+                <button onclick="planner.updateTaskPanel()"
+                        class="flex-shrink-0 px-3 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 text-xs rounded-lg transition-colors">
                   取消
                 </button>
               </div>
