@@ -4702,11 +4702,9 @@ class DailyPlanner {
     }
 
     return `
-      <!-- 任务面板遮罩层 -->
-      ${this.showTaskPanel ? `<div class="fixed inset-0 z-30" onclick="planner.closeTaskPanel()"></div>` : ''}
       <!-- 右侧侧边栏任务面板 -->
       <div class="task-panel fixed top-0 right-0 h-full w-80 ${bgClass} shadow-2xl z-40 transform transition-transform duration-300 ${this.showTaskPanel ? 'translate-x-0' : 'translate-x-full'}">
-        <div class="h-full flex flex-col ${window.electronAPI ? 'pt-10' : 'pt-4'}" onclick="event.stopPropagation()">
+        <div class="h-full flex flex-col ${window.electronAPI ? 'pt-10' : 'pt-4'}">
           <!-- 头部 -->
           <div class="px-4 pb-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}">
             <div class="flex items-center justify-between mb-2">
@@ -7938,7 +7936,8 @@ class DailyPlanner {
 
     app.innerHTML = `
       ${windowControls}
-      <div class="min-h-screen bg-gradient-to-br ${bgFrom} ${bgTo} ${window.electronAPI ? 'pt-10' : 'py-8'} px-4 transition-colors" tabindex="0" id="main-container">
+      <div class="min-h-screen bg-gradient-to-br ${bgFrom} ${bgTo} ${window.electronAPI ? 'pt-10' : 'py-8'} px-4 transition-colors" tabindex="0" id="main-container"
+           onclick="if(planner.showTaskPanel && !event.target.closest('.task-panel') && !event.target.closest('[data-date]')) { planner.showTaskPanel = false; planner.render(); }">
         <div class="max-w-4xl mx-auto">
           <div class="flex items-center justify-between mb-6 relative z-50 flex-wrap gap-2">
             <h1 class="text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}">${this.viewMode === 'month' ? '每日规划' : '周规划'}</h1>
