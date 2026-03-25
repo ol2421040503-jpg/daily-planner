@@ -169,7 +169,18 @@ export const STORAGE_KEYS = {
   TAG_ORDER: 'dailyPlannerTagOrder',
   DELETED_DEFAULT_TAGS: 'dailyPlannerDeletedDefaultTags',
   REMINDER_CONFIG: 'dailyPlannerReminderConfig',
+  SUMMARY_NOTES: 'dailyPlannerSummaryNotes',
 } as const;
+
+// ==================== 图片压缩配置 ====================
+
+/** 图片压缩配置 */
+export const IMAGE_COMPRESSION_CONFIG = {
+  maxWidth: 1920,
+  maxHeight: 1080,
+  quality: 0.7,
+  mimeType: 'image/jpeg'
+};
 
 // ==================== 其他常量 ====================
 

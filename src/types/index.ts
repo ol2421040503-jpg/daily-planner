@@ -20,7 +20,8 @@ export interface Task {
   date: string;
   time: string;
   priority: TaskPriority;
-  tags: string[];  // 标签ID数组
+  tags: string[];
+  guideId?: string;
 }
 
 /** 按日期分组的任务 */
@@ -34,10 +35,10 @@ export interface DateTasks {
 export interface Tag {
   id: string;
   name: string;
-  color: string;       // Tailwind 背景色
-  textColor: string;   // Tailwind 文字色
-  icon: string;        // emoji 图标
-  isCustom?: boolean;  // 是否是自定义标签
+  color: string;
+  textColor: string;
+  icon: string;
+  isCustom?: boolean;
 }
 
 // ==================== 纪念日相关类型 ====================
@@ -46,10 +47,10 @@ export interface Tag {
 export interface Anniversary {
   id: string;
   name: string;
-  month: number;  // 1-12
-  day: number;    // 1-31
+  month: number;
+  day: number;
   type: 'birthday' | 'anniversary' | 'custom';
-  isLunar?: boolean;  // 是否是农历日期
+  isLunar?: boolean;
 }
 
 // ==================== 统计相关类型 ====================
@@ -62,13 +63,39 @@ export interface MonthlyStats {
   percentage: number;
 }
 
+/** 周度统计 */
+export interface WeeklyStats {
+  total: number;
+  completed: number;
+  pending: number;
+  percentage: number;
+  byDay: { date: string; dayName: string; total: number; completed: number }[];
+  lastWeekPercentage: number;
+  improvement: number;
+  streakDays: number;
+}
+
+/** 年度统计扩展 */
+export interface YearlyStatsExtended {
+  total: number;
+  completed: number;
+  pending: number;
+  percentage: number;
+  byMonth: { month: number; total: number; completed: number; percentage: number }[];
+  busiestMonth: { month: number; count: number } | null;
+  mostProductiveMonth: { month: number; rate: number } | null;
+  streakDays: number;
+  longestStreak: number;
+  avgDailyTasks: number;
+}
+
 /** 月度筛选类型 */
 export type MonthlyFilter = 'all' | 'completed' | 'pending';
 
 // ==================== 视图与主题类型 ====================
 
 /** 视图模式 */
-export type ViewMode = 'month' | 'week' | 'day';
+export type ViewMode = 'month' | 'week';
 
 /** 主题模式 */
 export type ThemeMode = 'light' | 'dark';
@@ -82,8 +109,8 @@ export type BackgroundTheme = 'blue' | 'purple' | 'green' | 'orange' | 'pink';
 export interface HolidayInfo {
   date: string;
   name: string;
-  holiday: boolean;  // true=假日, false=工作日(调休)
-  wage: number;      // 工资倍数：3=法定假日, 1=普通工作日
+  holiday: boolean;
+  wage: number;
 }
 
 /** 节假日缓存 */
@@ -110,10 +137,10 @@ export interface PriorityConfig {
 
 /** 提醒配置 */
 export interface ReminderConfig {
-  anniversary: number;  // 纪念日提前天数
-  high: number;         // 高优先级提前天数
-  medium: number;       // 中优先级提前天数
-  low: number;          // 低优先级提前天数
+  anniversary: number;
+  high: number;
+  medium: number;
+  low: number;
 }
 
 /** 背景主题配置 */
@@ -123,6 +150,36 @@ export interface BackgroundThemeConfig {
   name: string;
   darkFrom: string;
   darkTo: string;
+}
+
+// ==================== 知识库相关类型 ====================
+
+/** 知识库步骤 */
+export interface KnowledgeStep {
+  id: string;
+  title: string;
+  content: string;
+  imageUrl?: string;
+  images?: string[];
+  order: number;
+}
+
+/** 知识库指南 */
+export interface KnowledgeGuide {
+  id: string;
+  name: string;
+  steps: KnowledgeStep[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ==================== 总结笔记类型 ====================
+
+/** 总结笔记 */
+export interface SummaryNotes {
+  weekly: Record<string, string>;
+  monthly: Record<string, string>;
+  yearly: Record<string, string>;
 }
 
 // ==================== Electron API 类型 ====================

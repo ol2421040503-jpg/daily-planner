@@ -6,280 +6,106 @@
  * 
  * @author 严辉村高斯林
  * @license MIT
- * @version 1.0.0
+ * @version 1.5.9
  */
 
 import './index.css';
 import { Solar, Lunar } from 'lunar-javascript';
 import JSZip from 'jszip';
 
-// ==================== 图片压缩配置 ====================
-const IMAGE_COMPRESSION_CONFIG = {
-  maxWidth: 1920,        // 最大宽度
-  maxHeight: 1080,       // 最大高度
-  quality: 0.7,          // 压缩质量 (0-1)
-  mimeType: 'image/jpeg' // 输出格式
-};
+// 导入模块化代码
+import type {
+  TaskPriority,
+  TaskSortBy,
+  Tag,
+  KnowledgeStep,
+  KnowledgeGuide,
+  Task,
+  DateTasks,
+  Anniversary,
+  MonthlyStats,
+  WeeklyStats,
+  YearlyStatsExtended,
+  MonthlyFilter,
+  ViewMode,
+  ThemeMode,
+  BackgroundTheme,
+  HolidayInfo,
+  HolidayCache,
+} from './types';
 
-// ==================== 版本配置 ====================
-const APP_VERSION = '1.4.9';
-const VERSION_CHECK_URL = 'https://your-server.com/api/version'; // 替换为你的版本检查API
-const RELEASE_NOTES: Record<string, string[]> = {
-  '1.0.0': [
-    '✨ 首次发布',
-    '📅 支持日历视图（月/周/日）',
-    '📝 任务管理与优先级',
-    '🎂 纪念日提醒（支持农历）',
-    '🌙 深色模式',
-    '🎨 多种主题背景'
-  ]
-};
+import {
+  APP_VERSION,
+  VERSION_CHECK_URL,
+  RELEASE_NOTES,
+  PRIORITY_CONFIG,
+  VALID_PRIORITIES,
+  DEFAULT_TAGS,
+  ICON_OPTIONS,
+  BACKGROUND_THEMES,
+  DEFAULT_REMINDER_CONFIG,
+  STORAGE_KEYS,
+  HOVER_DELAY,
+  WEEKDAY_NAMES,
+  MONTH_NAMES,
+  IMAGE_COMPRESSION_CONFIG,
+} from './config';
 
-// 类型定义 - 四象限优先级
-type TaskPriority = 'urgent-important' | 'important' | 'urgent' | 'normal';
+import {
+  formatDate,
+  getDateKey,
+  getLunarInfo,
+  getLunarDisplayText,
+  getWeekdayName,
+  getWeekdayShort,
+  isToday,
+  isWeekend,
+  getDaysInMonth,
+  getFirstDayOfMonth,
+  getWeekNumber,
+  getWeekRange,
+  getWeekDates,
+  addDays,
+  daysBetween,
+  isOverdue,
+  getRelativeTime,
+  getMonthName,
+  parseDate,
+  compressImage,
+  compressBase64Image,
+  readImageFromClipboard,
+  generateTaskId,
+  sortTasks,
+  sortTasksByPriority,
+  sortTasksByTime,
+  sortTasksByStatus,
+  sortTasksByText,
+  calculateMonthlyStats,
+  calculateRangeStats,
+  filterTasksByPriority,
+  filterPendingTasks,
+  filterCompletedTasks,
+  filterTasksByTag,
+  getOverdueTasks,
+  getTodayTasks,
+  batchUpdatePriority,
+} from './utils';
 
-// 任务排序类型
-type TaskSortBy = 'time' | 'priority' | 'status' | 'text';
+import { StorageService, TaskService } from './services';
 
-// 四象限优先级配置
-const PRIORITY_CONFIG: Record<TaskPriority, { 
-  label: string; 
-  shortLabel: string;
-  desc: string;
-  bgColor: string; 
-  darkBg: string;
-  color: string; 
-  darkColor: string;
-  borderColor: string;
-  order: number;
-}> = {
-  'urgent-important': { 
-    label: '紧急重要', 
-    shortLabel: '紧急重要',
-    desc: '立即处理',
-    bgColor: 'bg-red-100', 
-    darkBg: 'bg-red-900/50', 
-    color: 'text-red-700', 
-    darkColor: 'text-red-300',
-    borderColor: 'border-red-500',
-    order: 0
-  },
-  'important': { 
-    label: '重要不急', 
-    shortLabel: '重要不急',
-    desc: '计划安排',
-    bgColor: 'bg-yellow-100', 
-    darkBg: 'bg-yellow-900/50', 
-    color: 'text-yellow-700', 
-    darkColor: 'text-yellow-300',
-    borderColor: 'border-yellow-500',
-    order: 1
-  },
-  'urgent': { 
-    label: '紧急不重要', 
-    shortLabel: '紧急不重要',
-    desc: '快速处理',
-    bgColor: 'bg-orange-100', 
-    darkBg: 'bg-orange-900/50', 
-    color: 'text-orange-700', 
-    darkColor: 'text-orange-300',
-    borderColor: 'border-orange-500',
-    order: 2
-  },
-  'normal': { 
-    label: '不重要不急', 
-    shortLabel: '不重要不急',
-    desc: '有空处理',
-    bgColor: 'bg-gray-100', 
-    darkBg: 'bg-gray-700', 
-    color: 'text-gray-600', 
-    darkColor: 'text-gray-400',
-    borderColor: 'border-gray-400',
-    order: 3
-  }
-};
+// ==================== 辅助函数 ====================
 
-// 安全获取优先级配置（兼容旧数据）
+/** 安全获取优先级配置（兼容旧数据） */
 function getPriorityConfig(priority: string | undefined): typeof PRIORITY_CONFIG[TaskPriority] {
-  const validPriorities: TaskPriority[] = ['urgent-important', 'important', 'urgent', 'normal'];
   const p = priority || 'normal';
-  if (validPriorities.includes(p as TaskPriority)) {
+  if (VALID_PRIORITIES.includes(p as TaskPriority)) {
     return PRIORITY_CONFIG[p as TaskPriority];
   }
   return PRIORITY_CONFIG['normal'];
 }
 
-// 标签类型
-interface Tag {
-  id: string;
-  name: string;
-  color: string;       // Tailwind 背景色
-  textColor: string;   // Tailwind 文字色
-  icon: string;        // emoji 图标
-  isCustom?: boolean;  // 是否是自定义标签
-}
+// ==================== 应用状态 ====================
 
-// 知识库步骤
-interface KnowledgeStep {
-  id: string;
-  title: string;        // 步骤标题
-  content: string;      // 步骤内容/操作说明
-  imageUrl?: string;    // 图片URL（可选，兼容旧数据）
-  images?: string[];    // 图片URL数组（支持多图）
-  order: number;        // 排序顺序
-}
-
-// 知识库指南
-interface KnowledgeGuide {
-  id: string;
-  name: string;         // 指南名称
-  steps: KnowledgeStep[];  // 步骤列表
-  createdAt: number;    // 创建时间
-  updatedAt: number;    // 更新时间
-}
-
-// 预设标签配置
-// 预设标签（用户可自行删除）
-const DEFAULT_TAGS: Tag[] = [
-  { id: 'work', name: '工作', color: 'bg-blue-100', textColor: 'text-blue-700', icon: '💼' },
-  { id: 'life', name: '生活', color: 'bg-green-100', textColor: 'text-green-700', icon: '🏠' },
-  { id: 'study', name: '学习', color: 'bg-purple-100', textColor: 'text-purple-700', icon: '📚' },
-  { id: 'health', name: '健康', color: 'bg-red-100', textColor: 'text-red-700', icon: '💪' },
-  { id: 'finance', name: '财务', color: 'bg-yellow-100', textColor: 'text-yellow-700', icon: '💰' },
-  { id: 'social', name: '社交', color: 'bg-pink-100', textColor: 'text-pink-700', icon: '👥' },
-  { id: 'travel', name: '出行', color: 'bg-orange-100', textColor: 'text-orange-700', icon: '✈️' },
-  { id: 'shopping', name: '购物', color: 'bg-indigo-100', textColor: 'text-indigo-700', icon: '🛒' },
-];
-
-// 可选图标列表
-const ICON_OPTIONS: string[] = [
-  // 工作相关
-  '💼', '📁', '📋', '📝', '📌', '📎', '✏️', '📊', '📈', '📉',
-  '💻', '🖥️', '⌨️', '🖱️', '🖨️', '📱', '☎️', '📧', '📬', '📮',
-  // 学习相关
-  '📚', '📖', '📕', '📗', '📘', '📙', '📓', '📔', '📒', '✏️',
-  '🎓', '🎯', '🏆', '🥇', '🏅', '🎖️', '🔍', '🔬', '🔭', '💡',
-  // 生活相关
-  '🏠', '🏡', '🏢', '🏗️', '🔑', '🛋️', '🛏️', '🚿', '🧹', '🧺',
-  '🍳', '🍽️', '☕', '🍵', '🥤', '🍷', '🍺', '🥘', '🍲', '🥗',
-  // 健康相关
-  '💪', '🏃', '🧘', '⚽', '🏀', '🎾', '🏐', '🎱', '🏓', '🏸',
-  '❤️', '💊', '🏥', '🩺', '💉', '🩹', '🦷', '👁️', '🧠', '🦴',
-  // 财务相关
-  '💰', '💵', '💴', '💶', '💷', '💸', '💳', '🧾', '📊', '📈',
-  '🏦', '🏧', '💎', '🎁', '🧧', '💷', '💰', '💲', '💹', '🔢',
-  // 社交相关
-  '👥', '👤', '🤝', '💬', '💭', '🗣️', '📢', '📣', '📞', '📱',
-  '👨‍👩‍👧', '👨‍👩‍👧‍👦', '👴', '👵', '👶', '🧒', '👦', '👧', '🧑', '👨',
-  // 出行相关
-  '✈️', '🚀', '🚁', '🚂', '🚃', '🚄', '🚅', '🚆', '🚇', '🚈',
-  '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐',
-  // 购物相关
-  '🛒', '🛍️', '🛐', '🏪', '🏬', '🏭', '🏷️', '🎫', '🎁', '🎀',
-  '🛍️', '🛒', '💸', '💳', '🧾', '📦', '📬', '📮', '🛍️', '🎁',
-  // 娱乐相关
-  '🎮', '🎯', '🎲', '♟️', '🎨', '🎬', '🎤', '🎧', '🎸', '🎹',
-  '🎺', '🎻', '🥁', '📻', '🎛️', '🎚️', '🎤', '🎼', '🎵', '🎶',
-  // 自然相关
-  '🌟', '⭐', '🌙', '☀️', '🌤️', '⛅', '🌈', '🌸', '🌺', '🌻',
-  '🍀', '🌿', '🍃', '🌾', '🌵', '🌴', '🌳', '🌲', '🍁', '🍂',
-  // 其他
-  '⭐', '✨', '💫', '🔥', '💥', '💢', '💦', '💨', '🎉', '🎊',
-  '🔔', '🔕', '💡', '🕯️', '🔦', '🔋', '🔌', '⚙️', '🔧', '🔨'
-];
-
-interface Task {
-  id: string;
-  text: string;
-  completed: boolean;
-  date: string;
-  time: string;
-  priority: TaskPriority;
-  tags: string[];  // 标签ID数组
-  guideId?: string; // 关联的知识库ID
-}
-
-interface DateTasks {
-  [date: string]: Task[];
-}
-
-interface Anniversary {
-  id: string;
-  name: string;
-  month: number;  // 1-12
-  day: number;    // 1-31
-  type: 'birthday' | 'anniversary' | 'custom';
-  isLunar?: boolean;  // 是否是农历日期
-}
-
-interface MonthlyStats {
-  total: number;
-  completed: number;
-  pending: number;
-  percentage: number;
-}
-
-// 周统计数据
-interface WeeklyStats {
-  total: number;
-  completed: number;
-  pending: number;
-  percentage: number;
-  byDay: { date: string; dayName: string; total: number; completed: number }[];
-  lastWeekPercentage: number;
-  improvement: number; // 较上周提升百分比
-  streakDays: number; // 连续打卡天数
-}
-
-// 年度统计数据扩展
-interface YearlyStatsExtended {
-  total: number;
-  completed: number;
-  pending: number;
-  percentage: number;
-  byMonth: { month: number; total: number; completed: number; percentage: number }[];
-  busiestMonth: { month: number; count: number } | null;
-  mostProductiveMonth: { month: number; rate: number } | null;
-  streakDays: number;
-  longestStreak: number;
-  avgDailyTasks: number;
-}
-
-type MonthlyFilter = 'all' | 'completed' | 'pending';
-
-// 视图模式类型
-type ViewMode = 'month' | 'week';
-
-// 主题模式类型
-type ThemeMode = 'light' | 'dark';
-
-// 背景主题类型
-type BackgroundTheme = 'blue' | 'purple' | 'green' | 'orange' | 'pink';
-
-// 节假日信息类型
-interface HolidayInfo {
-  date: string;
-  name: string;
-  holiday: boolean;  // true=假日, false=工作日(调休)
-  wage: number;      // 工资倍数：3=法定假日, 1=普通工作日
-}
-
-interface HolidayCache {
-  [year: string]: {
-    [date: string]: HolidayInfo;
-  };
-}
-
-// 背景主题配置
-const backgroundThemes: Record<BackgroundTheme, { from: string; to: string; name: string; darkFrom: string; darkTo: string }> = {
-  blue: { from: 'from-blue-100', to: 'to-indigo-200', name: '蓝色', darkFrom: 'from-gray-900', darkTo: 'to-slate-900' },
-  purple: { from: 'from-purple-100', to: 'to-pink-200', name: '紫色', darkFrom: 'from-gray-900', darkTo: 'to-purple-950' },
-  green: { from: 'from-green-100', to: 'to-emerald-200', name: '绿色', darkFrom: 'from-gray-900', darkTo: 'to-emerald-950' },
-  orange: { from: 'from-orange-100', to: 'to-amber-200', name: '橙色', darkFrom: 'from-gray-900', darkTo: 'to-amber-950' },
-  pink: { from: 'from-pink-100', to: 'to-rose-200', name: '粉色', darkFrom: 'from-gray-900', darkTo: 'to-rose-950' }
-};
-
-// 应用状态
 class DailyPlanner {
   private currentDate: Date;
   private selectedDate: Date | null;
@@ -7759,10 +7585,10 @@ class DailyPlanner {
     const app = document.getElementById('app');
     if (!app) return;
 
-    const theme = backgroundThemes[this.currentTheme];
+    const theme = BACKGROUND_THEMES[this.currentTheme];
 
     // 生成主题选项
-    const themeOptions = Object.entries(backgroundThemes).map(([key, value]) => `
+    const themeOptions = Object.entries(BACKGROUND_THEMES).map(([key, value]) => `
       <button onclick="planner.setTheme('${key}')"
               class="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${this.currentTheme === key ? this.themeMode === 'dark' ? 'bg-gray-700' : 'bg-gray-100' : ''}">
         <div class="w-6 h-6 rounded-full bg-gradient-to-br ${value.from} ${value.to}"></div>
