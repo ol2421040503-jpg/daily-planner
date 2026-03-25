@@ -3774,12 +3774,22 @@ class DailyPlanner {
             const currentText = task.text;
             const isDark = this.themeMode === 'dark';
             textSpan.innerHTML = `
-              <input type="text" 
-                     class="flex-1 px-2 py-1 border ${isDark ? 'bg-gray-600 border-gray-500 text-gray-100' : 'bg-white border-gray-300 text-gray-700'} rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                     value="${currentText.replace(/"/g, '&quot;')}"
-                     onkeydown="if(event.key === 'Enter') { planner.editTask('${taskId}', this.value); } else if(event.key === 'Escape') { planner.render(); }"
-                     onblur="planner.editTask('${taskId}', this.value)"
-                     autofocus>
+              <div class="flex items-center gap-2 w-full">
+                <input type="text" 
+                       id="edit-input-${taskId}"
+                       class="flex-1 min-w-0 px-2 py-1 border ${isDark ? 'bg-gray-600 border-gray-500 text-gray-100' : 'bg-white border-gray-300 text-gray-700'} rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       value="${currentText.replace(/"/g, '&quot;')}"
+                       onkeydown="if(event.key === 'Enter') { event.preventDefault(); planner.editTask('${taskId}', this.value); } else if(event.key === 'Escape') { planner.render(); }"
+                       autofocus>
+                <button onclick="planner.editTask('${taskId}', document.getElementById('edit-input-${taskId}').value)"
+                        class="flex-shrink-0 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded transition-colors">
+                  保存
+                </button>
+                <button onclick="planner.render()"
+                        class="flex-shrink-0 px-2 py-1 bg-gray-300 hover:bg-gray-400 text-gray-700 text-xs rounded transition-colors">
+                  取消
+                </button>
+              </div>
             `;
             const input = textSpan.querySelector('input');
             if (input) {
@@ -3901,7 +3911,7 @@ class DailyPlanner {
                    ${task.completed ? 'checked' : ''}
                    onchange="planner.toggleTask('${task.id}')"
                    class="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer task-checkbox">
-            <span class="task-text flex-1 ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} cursor-pointer" title="双击编辑">${task.text}</span>
+            <span class="task-text flex-1 ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} cursor-pointer">${task.text}</span>
             <select onchange="planner.updateTaskPriority('${task.id}', this.value)"
                     class="text-xs px-2 py-1 rounded ${priorityBg} ${priorityColor} border-0 cursor-pointer whitespace-nowrap">
               <option value="urgent-important" ${taskPriority === 'urgent-important' ? 'selected' : ''}>🔴紧急重要</option>
@@ -3910,6 +3920,13 @@ class DailyPlanner {
               <option value="normal" ${taskPriority === 'normal' ? 'selected' : ''}>⚪不重要不急</option>
             </select>
             <span class="text-xs text-gray-400">${task.time}</span>
+            <button onclick="planner.startEditTask('${task.id}')"
+                    class="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all"
+                    title="编辑任务">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
+            </button>
             <button onclick="planner.openCopyModal('${task.id}')"
                     class="opacity-0 group-hover:opacity-100 p-1 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900 rounded transition-all"
                     title="复制到其他日期">
@@ -4612,7 +4629,7 @@ class DailyPlanner {
                  onchange="planner.toggleTask('${task.id}')"
                  class="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer task-checkbox mt-1 flex-shrink-0">
           <div class="flex-1 min-w-0">
-            <span class="task-text block text-sm ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} cursor-pointer whitespace-pre-wrap" title="双击编辑">${task.text}</span>
+            <span class="task-text block text-sm ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} cursor-pointer whitespace-pre-wrap">${task.text}</span>
             ${taskTagsHTML}
             ${guideHTML}
           </div>
@@ -4627,6 +4644,13 @@ class DailyPlanner {
             </select>
           </div>
           <div class="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button onclick="planner.startEditTask('${task.id}')"
+                    class="p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    title="编辑任务">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
+            </button>
             <button onclick="planner.openCopyModal('${task.id}')"
                     class="p-1 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900 rounded"
                     title="复制到其他日期">
