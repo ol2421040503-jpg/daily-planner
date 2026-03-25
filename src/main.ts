@@ -1861,16 +1861,17 @@ class DailyPlanner {
     const unreadCount = this.getUnreadCount();
     
     return `
+      <div class="fixed inset-0 z-40" onclick="planner.showNotificationPanel = false; planner.render();"></div>
       <div class="absolute right-0 top-full mt-2 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-lg shadow-xl border w-80 max-h-96 overflow-hidden z-50">
         <div class="flex items-center justify-between px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}">
           <h3 class="font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}">待办提醒</h3>
           <div class="flex items-center gap-2">
             ${notifications.length > 0 ? `
-              <button onclick="planner.markAllNotificationsRead()" class="text-xs ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-600'}">
+              <button onclick="event.stopPropagation(); planner.markAllNotificationsRead()" class="text-xs ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-600'}">
                 全部已读
               </button>
               <span class="${isDark ? 'text-gray-600' : 'text-gray-300'}">|</span>
-              <button onclick="planner.clearAllNotifications()" class="text-xs ${isDark ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-600'}">
+              <button onclick="event.stopPropagation(); planner.clearAllNotifications()" class="text-xs ${isDark ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-600'}">
                 清空列表
               </button>
             ` : ''}
@@ -7935,7 +7936,8 @@ class DailyPlanner {
 
     app.innerHTML = `
       ${windowControls}
-      <div class="min-h-screen bg-gradient-to-br ${bgFrom} ${bgTo} ${window.electronAPI ? 'pt-10' : 'py-8'} px-4 transition-colors" tabindex="0" id="main-container">
+      <div class="min-h-screen bg-gradient-to-br ${bgFrom} ${bgTo} ${window.electronAPI ? 'pt-10' : 'py-8'} px-4 transition-colors" tabindex="0" id="main-container"
+           onclick="if(planner.showTaskPanel && !event.target.closest('.task-panel')) { planner.showTaskPanel = false; planner.render(); }">
         <div class="max-w-4xl mx-auto">
           <div class="flex items-center justify-between mb-6 relative z-50 flex-wrap gap-2">
             <h1 class="text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}">${this.viewMode === 'month' ? '每日规划' : '周规划'}</h1>
@@ -7971,6 +7973,7 @@ class DailyPlanner {
                   </svg>
                 </button>
                 ${this.showThemeMenu ? `
+                  <div class="fixed inset-0 z-40" onclick="planner.showThemeMenu = false; planner.render();"></div>
                   <div class="absolute right-0 top-full mt-2 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-lg shadow-xl border py-2 min-w-[180px] z-50">
                     <div class="px-3 py-1 text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'} border-b ${isDark ? 'border-gray-700' : ''}">主题颜色</div>
                     ${themeOptions}
@@ -8056,11 +8059,10 @@ class DailyPlanner {
     requestAnimationFrame(() => {
       // 任务面板动画 - 只在没有弹窗打开时显示
       const taskPanel = document.querySelector('.task-panel');
-      const hasOpenModal = this.showStatsModal || this.showCopyModal || this.showThemeMenu;
+      const hasOpenModal = this.showStatsModal || this.showCopyModal || this.showThemeMenu || this.showNotificationPanel || this.showMoreMenu;
 
-      if (taskPanel && (this.selectedDate || this.hoveredDate) && !hasOpenModal) {
-        taskPanel.classList.add('show');
-      }
+      // 任务面板状态没变时不需要处理动画
+      // 只在首次打开时添加show类
 
       // 统计弹窗动画
       const statsModal = document.querySelector('.stats-modal');
