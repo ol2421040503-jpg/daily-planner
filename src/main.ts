@@ -3959,9 +3959,10 @@ class DailyPlanner {
           </div>
           ${this.selectedDate ? `
             <button onclick="planner.closeTaskPanel()"
-                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-              <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    class="w-7 h-7 flex items-center justify-center bg-gray-200 dark:bg-gray-600 hover:bg-red-500 dark:hover:bg-red-500 rounded-full transition-colors group"
+                    title="关闭面板">
+              <svg class="w-4 h-4 ${isDark ? 'text-gray-500 group-hover:text-white' : 'text-gray-600 group-hover:text-white'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
               </svg>
             </button>
           ` : ''}
@@ -4668,9 +4669,10 @@ class DailyPlanner {
             <div class="flex items-center justify-between mb-2">
               <h2 class="text-lg font-bold ${textClass}">${dateStr}</h2>
               <button onclick="planner.closeTaskPanel()"
-                      class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                <svg class="w-4 h-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      class="w-6 h-6 flex items-center justify-center bg-gray-200 dark:bg-gray-600 hover:bg-red-500 dark:hover:bg-red-500 rounded-full transition-colors group"
+                      title="关闭面板">
+                <svg class="w-3.5 h-3.5 ${isDark ? 'text-gray-500 group-hover:text-white' : 'text-gray-600 group-hover:text-white'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
               </button>
             </div>
