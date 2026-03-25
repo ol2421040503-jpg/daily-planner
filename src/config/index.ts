@@ -14,7 +14,7 @@ import type {
 } from '../types';
 
 // ==================== 版本配置 ====================
-export const APP_VERSION = '1.6.0';
+export const APP_VERSION = '1.0.0';
 export const VERSION_CHECK_URL = 'https://your-server.com/api/version';
 
 /** 版本更新日志 */
@@ -169,18 +169,7 @@ export const STORAGE_KEYS = {
   TAG_ORDER: 'dailyPlannerTagOrder',
   DELETED_DEFAULT_TAGS: 'dailyPlannerDeletedDefaultTags',
   REMINDER_CONFIG: 'dailyPlannerReminderConfig',
-  SUMMARY_NOTES: 'dailyPlannerSummaryNotes',
 } as const;
-
-// ==================== 图片压缩配置 ====================
-
-/** 图片压缩配置 */
-export const IMAGE_COMPRESSION_CONFIG = {
-  maxWidth: 1920,
-  maxHeight: 1080,
-  quality: 0.7,
-  mimeType: 'image/jpeg'
-};
 
 // ==================== 其他常量 ====================
 
