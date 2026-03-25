@@ -3833,7 +3833,52 @@ class DailyPlanner {
     this.showQuadrantView = false;
     this.currentGuide = null;
     
-    this.render(); // 重新渲染页面
+    // 快速更新：只更新日历选中状态和任务面板
+    this.updateCalendarSelection();
+    this.updateTaskPanelQuick();
+  }
+
+  // 快速更新任务面板（不重新渲染整个页面）
+  private updateTaskPanelQuick(): void {
+    const displayDate = this.getDisplayDate();
+    if (!displayDate) return;
+
+    const taskPanel = document.querySelector('.task-panel');
+    if (!taskPanel) {
+      // 面板不存在，需要完整渲染
+      this.render();
+      return;
+    }
+
+    // 更新面板位置
+    taskPanel.classList.remove('translate-x-full');
+    taskPanel.classList.add('translate-x-0');
+
+    // 调用现有的更新逻辑
+    this.updateTaskPanel();
+  }
+
+  // 更新日历选中状态
+  private updateCalendarSelection(): void {
+    // 移除之前非今日的选中状态
+    document.querySelectorAll('[data-date]').forEach(el => {
+      const isToday = el.classList.contains('ring-blue-500');
+      if (!isToday) {
+        el.classList.remove('ring-2', 'ring-blue-400');
+      }
+    });
+    
+    // 添加新的选中状态
+    if (this.selectedDate) {
+      const dateKey = this.formatDate(this.selectedDate);
+      const selectedEl = document.querySelector(`[data-date="${dateKey}"]`);
+      if (selectedEl) {
+        const isToday = selectedEl.classList.contains('ring-blue-500');
+        if (!isToday) {
+          selectedEl.classList.add('ring-2', 'ring-blue-400');
+        }
+      }
+    }
   }
 
   // 鼠标悬停日期（临时显示）
@@ -3865,7 +3910,8 @@ class DailyPlanner {
       // 如果没有显示日期，隐藏面板
       const taskPanel = document.querySelector('.task-panel');
       if (taskPanel) {
-        taskPanel.classList.remove('show');
+        taskPanel.classList.add('translate-x-full');
+        taskPanel.classList.remove('translate-x-0');
       }
       return;
     }
@@ -3873,6 +3919,14 @@ class DailyPlanner {
     // 找到任务面板元素
     const taskPanel = document.querySelector('.task-panel');
     if (!taskPanel) return;
+
+    // 确保面板显示
+    taskPanel.classList.remove('translate-x-full');
+    taskPanel.classList.add('translate-x-0');
+
+    // 找到面板内容容器
+    const contentWrapper = taskPanel.querySelector('.task-panel-content');
+    if (!contentWrapper) return;
 
     // 更新面板内容
     const tasks = this.getSelectedDateTasks();
@@ -3974,60 +4028,65 @@ class DailyPlanner {
     }
 
     // 更新面板内容
-    taskPanel.innerHTML = `
-      <div class="p-6 flex flex-col max-h-[60vh]">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h2 class="text-xl font-bold ${textClass}">${dateStr} 的任务</h2>
-            <div class="flex items-center gap-2 mt-1">
-              <span class="text-xs text-gray-400 dark:text-gray-500">农历 ${lunarText}</span>
+    contentWrapper.innerHTML = `
+          <!-- 头部 -->
+          <div class="px-4 pb-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}">
+            <div class="flex items-center justify-between mb-2">
+              <h2 class="text-lg font-bold ${textClass}">${dateStr}</h2>
+              <button onclick="planner.closeTaskPanel()"
+                      class="w-6 h-6 flex items-center justify-center bg-gray-200 dark:bg-gray-600 hover:bg-red-500 dark:hover:bg-red-500 rounded-full transition-colors group"
+                      title="关闭面板">
+                <svg class="w-3.5 h-3.5 ${isDark ? 'text-gray-500 group-hover:text-white' : 'text-gray-600 group-hover:text-white'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+              <span class="${isDark ? 'text-gray-400' : 'text-gray-500'}">农历 ${lunarText}</span>
               ${holidayInfo ? (holidayInfo.holiday ? 
-                `<span class="text-xs px-1.5 py-0.5 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded">${holidayInfo.name}</span>` : 
-                `<span class="text-xs px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 rounded">调休上班</span>`) : ''}
+                `<span class="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded">${holidayInfo.name}</span>` : 
+                `<span class="px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 rounded">调休</span>`) : ''}
             </div>
           </div>
-          ${this.selectedDate ? `
-            <button onclick="planner.closeTaskPanel()"
-                    class="w-7 h-7 flex items-center justify-center bg-gray-200 dark:bg-gray-600 hover:bg-red-500 dark:hover:bg-red-500 rounded-full transition-colors group"
-                    title="关闭面板">
-              <svg class="w-4 h-4 ${isDark ? 'text-gray-500 group-hover:text-white' : 'text-gray-600 group-hover:text-white'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
-          ` : ''}
-        </div>
-        ${anniversaryHtml}
-        <div class="mb-4">
-          <div class="flex gap-2">
-            <input type="text"
-                   id="taskInput"
-                   placeholder="添加新任务..."
-                   class="flex-1 px-4 py-2 border ${inputBg} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDark ? 'text-gray-100 placeholder-gray-400' : ''}"
-                   onkeypress="if(event.key === 'Enter') planner.handleAddTask()">
-            <select id="prioritySelect" class="px-3 py-2 border ${inputBg} rounded-lg ${isDark ? 'text-gray-100' : ''}">
-              <option value="urgent-important">紧急重要</option>
-              <option value="important">重要不急</option>
-              <option value="urgent">紧急不重要</option>
-              <option value="normal" selected>普通</option>
-            </select>
-            <button onclick="planner.handleAddTask()"
-                    class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
-              添加
-            </button>
+          
+          ${anniversaryHtml}
+          
+          <!-- 添加任务区域 -->
+          <div class="px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}">
+            <textarea id="taskInput"
+                      placeholder="添加新任务...&#10;支持多行输入&#10;按 Ctrl+Enter 添加"
+                      rows="3"
+                      class="w-full px-3 py-2 border ${inputBg} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDark ? 'text-gray-100 placeholder-gray-400' : 'text-gray-800 placeholder-gray-400'} text-sm resize-none"
+                      onkeydown="if(event.key === 'Enter' && event.ctrlKey) planner.handleAddTask()"></textarea>
+            <div class="flex items-center gap-2 mt-2">
+              <select id="taskTimeInput" class="flex-1 px-2 py-1.5 text-xs border ${inputBg} rounded-lg ${isDark ? 'text-gray-100' : ''}">
+                <option value="">不设置时间</option>
+                ${Array.from({length: 24}, (_, h) => 
+                  Array.from({length: 4}, (_, m) => {
+                    const hour = h.toString().padStart(2, '0');
+                    const min = (m * 15).toString().padStart(2, '0');
+                    return `<option value="${hour}:${min}">${hour}:${min}</option>`;
+                  }).join('')
+                ).join('')}
+              </select>
+              <select id="prioritySelect" class="flex-1 px-2 py-1.5 text-xs border ${inputBg} rounded-lg ${isDark ? 'text-gray-100' : ''}">
+                <option value="urgent-important">紧急重要</option>
+                <option value="important">重要不急</option>
+                <option value="urgent">紧急不重要</option>
+                <option value="normal" selected>普通</option>
+              </select>
+              <button onclick="planner.handleAddTask()"
+                      class="px-3 py-1.5 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors">
+                添加
+              </button>
+            </div>
           </div>
-        </div>
-        <div class="flex-1 space-y-2 overflow-y-auto min-h-[300px]">
-          ${tasks.length > 0 ? tasksList : '<p class="text-gray-400 text-center py-8">暂无任务</p>'}
-        </div>
-      </div>
-    `;
-
-    // 确保面板显示
-    requestAnimationFrame(() => {
-      if (!taskPanel.classList.contains('show')) {
-        taskPanel.classList.add('show');
-      }
-    });
+          
+          <!-- 任务列表 -->
+          <div class="flex-1 overflow-y-auto px-4 py-2 space-y-2">
+            ${tasks.length > 0 ? tasksList : `<p class="text-gray-400 text-center py-8 text-sm">暂无任务，添加一个吧~</p>`}
+          </div>
+        `;
   }
 
   // 更新日历指示器颜色
@@ -4709,7 +4768,7 @@ class DailyPlanner {
     return `
       <!-- 右侧侧边栏任务面板 -->
       <div class="task-panel fixed top-0 right-0 h-full w-80 ${bgClass} shadow-2xl z-40 transform transition-transform duration-300 ${this.showTaskPanel ? 'translate-x-0' : 'translate-x-full'}">
-        <div class="h-full flex flex-col ${window.electronAPI ? 'pt-10' : 'pt-4'}">
+        <div class="task-panel-content h-full flex flex-col ${window.electronAPI ? 'pt-10' : 'pt-4'}">
           <!-- 头部 -->
           <div class="px-4 pb-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}">
             <div class="flex items-center justify-between mb-2">
