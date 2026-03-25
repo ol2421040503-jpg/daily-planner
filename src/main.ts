@@ -3850,11 +3850,11 @@ class DailyPlanner {
         clearTimeout(this.hoverTimer);
       }
 
-      // 设置新的悬停定时器，延迟75ms显示面板
+      // 设置新的悬停定时器，延迟25ms显示面板
       this.hoverTimer = window.setTimeout(() => {
         this.hoveredDate = new Date(date);
         this.updateTaskPanel();
-      }, 75);
+      }, 25);
     }
   }
 
