@@ -626,6 +626,11 @@ class DailyPlanner {
   private showRecurringScheduleModal: boolean = false;  // 显示循环日程弹窗
   private editingRecurringSchedule: RecurringSchedule | null = null;  // 正在编辑的循环日程
   
+  // 备忘录相关
+  private memos: string[] = [];  // 备忘录列表
+  private showMemoPanel: boolean = false;  // 显示备忘录面板
+  private editingMemoIndex: number = -1;  // 正在编辑的备忘录索引
+  
   // 提醒配置
   private reminderConfig = {
     anniversary: 3,   // 纪念日提前3天
@@ -670,6 +675,8 @@ class DailyPlanner {
     this.initKnowledgeGuides();
     // 加载循环日程
     this.recurringSchedules = this.loadRecurringSchedules();
+    // 加载备忘录
+    this.memos = this.loadMemos();
   }
   
   // 异步初始化知识库
@@ -3332,6 +3339,79 @@ class DailyPlanner {
     this.render();
   }
 
+  // ==================== 备忘录相关 ====================
+  
+  // 加载备忘录
+  private loadMemos(): string[] {
+    const saved = localStorage.getItem('dailyPlannerMemos');
+    return saved ? JSON.parse(saved) : [];
+  }
+
+  // 保存备忘录
+  private saveMemos(): void {
+    localStorage.setItem('dailyPlannerMemos', JSON.stringify(this.memos));
+  }
+
+  // 显示备忘录面板
+  public showMemoPanelHover(): void {
+    this.showMemoPanel = true;
+    this.render();
+  }
+
+  // 隐藏备忘录面板
+  public hideMemoPanelHover(): void {
+    if (this.editingMemoIndex === -1) {  // 不在编辑状态才隐藏
+      this.showMemoPanel = false;
+      this.render();
+    }
+  }
+
+  // 添加备忘录
+  public addMemo(): void {
+    this.editingMemoIndex = -2;  // -2 表示新增模式
+    this.render();
+  }
+
+  // 保存备忘录内容
+  public saveMemoContent(content: string): void {
+    if (this.editingMemoIndex === -2) {
+      // 新增
+      if (content.trim()) {
+        this.memos.push(content.trim());
+      }
+    } else if (this.editingMemoIndex >= 0) {
+      // 编辑
+      if (content.trim()) {
+        this.memos[this.editingMemoIndex] = content.trim();
+      } else {
+        // 内容为空则删除
+        this.memos.splice(this.editingMemoIndex, 1);
+      }
+    }
+    this.saveMemos();
+    this.editingMemoIndex = -1;
+    this.render();
+  }
+
+  // 编辑备忘录
+  public editMemo(index: number): void {
+    this.editingMemoIndex = index;
+    this.render();
+  }
+
+  // 删除备忘录
+  public deleteMemo(index: number): void {
+    this.memos.splice(index, 1);
+    this.saveMemos();
+    this.render();
+  }
+
+  // 取消编辑
+  public cancelMemoEdit(): void {
+    this.editingMemoIndex = -1;
+    this.render();
+  }
+
   // 切换主题
   private setTheme(theme: BackgroundTheme): void {
     this.currentTheme = theme;
@@ -5894,6 +5974,136 @@ class DailyPlanner {
         </div>
       </div>
     `;
+  }
+
+  // 生成备忘录面板HTML
+  private generateMemoPanelHTML(): string {
+    const isDark = this.themeMode === 'dark';
+    const bgClass = isDark ? 'bg-gray-800' : 'bg-white';
+    const textClass = isDark ? 'text-gray-100' : 'text-gray-800';
+    const labelClass = isDark ? 'text-gray-400' : 'text-gray-500';
+    const inputBg = isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300';
+    const cardBg = isDark ? 'bg-gray-700' : 'bg-gray-50';
+    
+    // 入口按钮（右下角）
+    const entryButton = `
+      <div class="fixed right-4 bottom-4 z-30"
+           onmouseenter="planner.showMemoPanelHover();"
+           onmouseleave="planner.hideMemoPanelHover();">
+        <!-- 备忘录入口按钮 -->
+        <button class="w-12 h-12 ${this.memos.length > 0 ? 'bg-amber-500' : 'bg-gray-400'} text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center relative">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          ${this.memos.length > 0 ? `
+            <span class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+              ${this.memos.length}
+            </span>
+          ` : ''}
+        </button>
+        
+        <!-- 悬停面板 -->
+        ${this.showMemoPanel ? `
+          <div class="absolute right-0 bottom-14 w-72 ${bgClass} rounded-xl shadow-2xl border ${isDark ? 'border-gray-700' : 'border-gray-200'} overflow-hidden"
+               onmouseenter="planner.showMemoPanel = true;"
+               onmouseleave="planner.hideMemoPanelHover();">
+            <!-- 标题栏 -->
+            <div class="px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between">
+              <h3 class="font-semibold ${textClass} flex items-center gap-2">
+                <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                备忘录
+              </h3>
+              <button onclick="planner.addMemo();"
+                      class="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
+                      title="添加备忘">
+                <svg class="w-4 h-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+              </button>
+            </div>
+            
+            <!-- 备忘录列表 -->
+            <div class="max-h-64 overflow-y-auto p-2">
+              ${this.memos.length === 0 && this.editingMemoIndex !== -2 ? `
+                <div class="text-center py-6 ${labelClass}">
+                  <svg class="w-10 h-10 mx-auto mb-2 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                  <p class="text-sm">暂无备忘录</p>
+                </div>
+              ` : `
+                ${this.memos.map((memo, index) => `
+                  ${this.editingMemoIndex === index ? `
+                    <!-- 编辑模式 -->
+                    <div class="p-2 ${cardBg} rounded-lg mb-2">
+                      <textarea id="memo-edit-${index}"
+                                class="w-full px-2 py-1.5 text-sm ${inputBg} border rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500 ${textClass} resize-none"
+                                rows="3"
+                                placeholder="输入备忘内容...">${memo}</textarea>
+                      <div class="flex justify-end gap-2 mt-2">
+                        <button onclick="planner.cancelMemoEdit();"
+                                class="px-2 py-1 text-xs ${cardBg} ${textClass} rounded hover:opacity-80">
+                          取消
+                        </button>
+                        <button onclick="planner.saveMemoContent(document.getElementById('memo-edit-${index}').value);"
+                                class="px-2 py-1 text-xs bg-amber-500 text-white rounded hover:bg-amber-600">
+                          保存
+                        </button>
+                      </div>
+                    </div>
+                  ` : `
+                    <!-- 显示模式 -->
+                    <div class="group p-2 ${cardBg} rounded-lg mb-2 relative">
+                      <p class="text-sm ${textClass} whitespace-pre-wrap break-words pr-10">${memo}</p>
+                      <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onclick="planner.editMemo(${index});"
+                                class="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                                title="编辑">
+                          <svg class="w-3.5 h-3.5 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                          </svg>
+                        </button>
+                        <button onclick="planner.deleteMemo(${index});"
+                                class="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                                title="删除">
+                          <svg class="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  `}
+                `).join('')}
+                
+                ${this.editingMemoIndex === -2 ? `
+                  <!-- 新增模式 -->
+                  <div class="p-2 ${cardBg} rounded-lg">
+                    <textarea id="memo-new"
+                              class="w-full px-2 py-1.5 text-sm ${inputBg} border rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500 ${textClass} resize-none"
+                              rows="3"
+                              placeholder="输入备忘内容..."></textarea>
+                    <div class="flex justify-end gap-2 mt-2">
+                      <button onclick="planner.cancelMemoEdit();"
+                              class="px-2 py-1 text-xs ${cardBg} ${textClass} rounded hover:opacity-80">
+                        取消
+                      </button>
+                      <button onclick="planner.saveMemoContent(document.getElementById('memo-new').value);"
+                              class="px-2 py-1 text-xs bg-amber-500 text-white rounded hover:bg-amber-600">
+                        保存
+                      </button>
+                    </div>
+                  </div>
+                ` : ''}
+              `}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+    
+    return entryButton;
   }
 
   // 生成复制任务弹窗HTML
@@ -8933,6 +9143,7 @@ class DailyPlanner {
       ${this.generateShortcutHelpHTML()}
       ${this.generateContactInfoHTML()}
       ${this.generateRecurringScheduleModalHTML()}
+      ${this.generateMemoPanelHTML()}
       ${this.generateKnowledgeBaseHTML()}
       ${this.generateSaveStatusHTML()}
     `;
