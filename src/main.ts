@@ -3354,8 +3354,27 @@ class DailyPlanner {
 
   // 显示备忘录面板
   public showMemoPanelHover(): void {
-    this.showMemoPanel = true;
+    if (!this.showMemoPanel) {
+      this.showMemoPanel = true;
+      this.render();
+    }
+  }
+
+  // 切换备忘录面板
+  public toggleMemoPanel(): void {
+    this.showMemoPanel = !this.showMemoPanel;
+    if (!this.showMemoPanel) {
+      this.editingMemoIndex = -1;
+    }
     this.render();
+  }
+
+  // 关闭备忘录面板（仅用于面板上的关闭按钮）
+  public closeMemoPanel(): void {
+    if (this.editingMemoIndex === -1) {
+      this.showMemoPanel = false;
+      this.render();
+    }
   }
 
   // 隐藏备忘录面板
@@ -5988,11 +6007,10 @@ class DailyPlanner {
     
     // 入口按钮（右下角）
     const entryButton = `
-      <div class="fixed right-4 bottom-4 z-30"
-           onmouseenter="planner.showMemoPanelHover();">
+      <div class="fixed right-4 bottom-4 z-30 memo-panel-container">
         <!-- 备忘录入口按钮 -->
         <button class="w-12 h-12 ${this.memos.length > 0 ? 'bg-amber-500' : 'bg-gray-400'} text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center relative"
-                onclick="event.stopPropagation(); planner.showMemoPanel = true; planner.render();">
+                onclick="event.stopPropagation(); planner.toggleMemoPanel();">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
           </svg>
@@ -6005,9 +6023,7 @@ class DailyPlanner {
         
         <!-- 悬停面板 -->
         ${this.showMemoPanel ? `
-          <div class="absolute right-0 bottom-14 w-72 ${bgClass} rounded-xl shadow-2xl border ${isDark ? 'border-gray-700' : 'border-gray-200'} overflow-hidden"
-               onclick="event.stopPropagation();"
-               onmouseleave="planner.hideMemoPanelHover();">
+          <div class="absolute right-0 bottom-14 w-72 ${bgClass} rounded-xl shadow-2xl border ${isDark ? 'border-gray-700' : 'border-gray-200'} overflow-hidden">
             <!-- 标题栏 -->
             <div class="px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between">
               <h3 class="font-semibold ${textClass} flex items-center gap-2">
@@ -6016,13 +6032,22 @@ class DailyPlanner {
                 </svg>
                 备忘录
               </h3>
-              <button onclick="event.stopPropagation(); planner.addMemo();"
-                      class="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
-                      title="添加备忘">
-                <svg class="w-4 h-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-              </button>
+              <div class="flex items-center gap-1">
+                <button onclick="planner.addMemo();"
+                        class="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
+                        title="添加备忘">
+                  <svg class="w-4 h-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                  </svg>
+                </button>
+                <button onclick="planner.closeMemoPanel();"
+                        class="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
+                        title="关闭">
+                  <svg class="w-4 h-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
             </div>
             
             <!-- 备忘录列表 -->
@@ -6033,7 +6058,7 @@ class DailyPlanner {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                   </svg>
                   <p class="text-sm">暂无备忘录</p>
-                  <button onclick="console.log('[Button] clicked'); planner.addMemo(); event.stopPropagation(); return false;"
+                  <button onclick="planner.addMemo();"
                           class="mt-2 px-3 py-1 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
                     添加备忘
                   </button>
@@ -8962,8 +8987,6 @@ class DailyPlanner {
 
   // 渲染整个应用
   private render(): void {
-    console.log('[Render] showMemoPanel:', this.showMemoPanel, 'editingMemoIndex:', this.editingMemoIndex);
-    console.trace('[Render] call stack');
     const app = document.getElementById('app');
     if (!app) return;
 
