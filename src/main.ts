@@ -3221,14 +3221,37 @@ class DailyPlanner {
     }
     
     this.saveRecurringSchedules();
-    this.editingRecurringSchedule = null;
     
-    // 如果是新创建的，生成对应的任务
+    // 更新或生成未来的任务
     if (isNew) {
       this.generateRecurringTasks(this.recurringSchedules[this.recurringSchedules.length - 1]);
+    } else {
+      // 编辑时，更新所有未来任务的名称和时间
+      this.updateRecurringTasks(this.editingRecurringSchedule!);
     }
     
+    this.editingRecurringSchedule = null;
     this.render();
+  }
+
+  // 更新循环日程生成的未来任务
+  private updateRecurringTasks(schedule: RecurringSchedule): void {
+    const today = this.formatDate(new Date());
+    
+    // 遍历所有日期，找到属于该循环日程的任务并更新
+    Object.keys(this.tasks).forEach(dateKey => {
+      if (dateKey >= today) {
+        this.tasks[dateKey].forEach(task => {
+          if (task.recurringScheduleId === schedule.id) {
+            // 更新任务名称和时间
+            task.text = schedule.name;
+            task.time = schedule.time || '';
+          }
+        });
+      }
+    });
+    
+    this.saveTasks();
   }
 
   // 生成循环日程的任务
