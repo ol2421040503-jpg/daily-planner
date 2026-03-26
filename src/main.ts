@@ -3796,28 +3796,32 @@ class DailyPlanner {
               .replace(/>/g, '&gt;')
               .replace(/"/g, '&quot;');
             textSpan.innerHTML = `
-              <div class="flex items-center gap-1 w-full">
-                <input type="text" 
-                       id="edit-input-${taskId}"
-                       class="flex-1 min-w-0 px-2 py-1 border ${isDark ? 'bg-gray-600 border-gray-500 text-gray-100' : 'bg-white border-gray-300 text-gray-700'} rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs select-text"
-                       value="${escapedText}"
-                       onkeydown="if(event.key === 'Enter') { event.preventDefault(); planner.editTask('${taskId}', this.value); } else if(event.key === 'Escape') { planner.updateTaskPanel(); }">
-                <button onclick="planner.editTask('${taskId}', document.getElementById('edit-input-${taskId}').value)"
-                        class="flex-shrink-0 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-[10px] rounded transition-colors">
-                  保存
-                </button>
-                <button onclick="planner.updateTaskPanel()"
-                        class="flex-shrink-0 px-2 py-1 bg-gray-300 hover:bg-gray-400 text-gray-700 text-[10px] rounded transition-colors">
-                  取消
-                </button>
+              <div class="w-full">
+                <textarea id="edit-input-${taskId}"
+                       class="w-full px-2 py-1 border ${isDark ? 'bg-gray-600 border-gray-500 text-gray-100' : 'bg-white border-gray-300 text-gray-700'} rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs select-text resize-none overflow-hidden"
+                       rows="1"
+                       oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';"
+                       onkeydown="if(event.key === 'Enter' && event.ctrlKey) { event.preventDefault(); planner.editTask('${taskId}', this.value); } else if(event.key === 'Escape') { planner.updateTaskPanel(); }">${escapedText}</textarea>
+                <div class="flex justify-end gap-1 mt-1">
+                  <button onclick="planner.editTask('${taskId}', document.getElementById('edit-input-${taskId}').value)"
+                          class="px-1.5 py-0.5 bg-blue-500 hover:bg-blue-600 text-white text-[10px] rounded transition-colors">
+                    保存
+                  </button>
+                  <button onclick="planner.updateTaskPanel()"
+                          class="px-1.5 py-0.5 bg-gray-300 hover:bg-gray-400 text-gray-700 text-[10px] rounded transition-colors">
+                    取消
+                  </button>
+                </div>
               </div>
             `;
-            const input = textSpan.querySelector('input');
-            if (input) {
-              input.focus();
-              // 延迟调用 select 确保 DOM 渲染完成
+            const textarea = textSpan.querySelector('textarea');
+            if (textarea) {
+              // 设置初始高度
               setTimeout(() => {
-                input.select();
+                textarea.style.height = 'auto';
+                textarea.style.height = textarea.scrollHeight + 'px';
+                textarea.focus();
+                textarea.select();
               }, 0);
             }
           }
