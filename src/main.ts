@@ -4058,7 +4058,9 @@ class DailyPlanner {
     if (this.tasks[dateKey]) {
       const task = this.tasks[dateKey].find(t => t.id === taskId);
       if (task) {
-        const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+        // 只在任务面板中查找任务元素，避免找到日历中的任务
+        const taskPanel = document.querySelector('.task-panel');
+        const taskElement = taskPanel ? taskPanel.querySelector(`[data-task-id="${taskId}"]`) : null;
         if (taskElement) {
           // 禁用拖拽，避免干扰文本选择
           (taskElement as HTMLElement).setAttribute('draggable', 'false');
@@ -7172,7 +7174,9 @@ class DailyPlanner {
     
     // 延迟滚动到任务
     setTimeout(() => {
-      const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+      // 只在任务面板中查找任务元素
+      const taskPanel = document.querySelector('.task-panel');
+      const taskElement = taskPanel ? taskPanel.querySelector(`[data-task-id="${taskId}"]`) : null;
       if (taskElement) {
         taskElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         taskElement.classList.add('ring-2', 'ring-blue-500');
