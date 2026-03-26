@@ -3805,13 +3805,13 @@ class DailyPlanner {
                        rows="1"
                        oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';"
                        onkeydown="if(event.key === 'Enter' && event.ctrlKey) { event.preventDefault(); planner.editTask('${taskId}', this.value); } else if(event.key === 'Escape') { planner.updateTaskPanel(); }">${escapedText}</textarea>
-                <div class="flex justify-end gap-0.5 mt-0.5">
+                <div class="flex justify-center gap-2 mt-1">
                   <button onclick="planner.editTask('${taskId}', document.getElementById('edit-input-${taskId}').value)"
-                          class="px-1 py-0.5 bg-blue-500 hover:bg-blue-600 text-white text-[9px] rounded transition-colors">
+                          class="px-2 py-0.5 bg-blue-500 hover:bg-blue-600 text-white text-[10px] rounded shadow-sm transition-colors">
                     保存
                   </button>
                   <button onclick="planner.updateTaskPanel()"
-                          class="px-1 py-0.5 bg-gray-300 hover:bg-gray-400 text-gray-700 text-[9px] rounded transition-colors">
+                          class="px-2 py-0.5 bg-gray-200 hover:bg-gray-300 text-gray-600 text-[10px] rounded shadow-sm transition-colors">
                     取消
                   </button>
                 </div>
