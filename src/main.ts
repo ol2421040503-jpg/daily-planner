@@ -3776,6 +3776,9 @@ class DailyPlanner {
       if (task) {
         const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
         if (taskElement) {
+          // 禁用拖拽，避免干扰文本选择
+          (taskElement as HTMLElement).setAttribute('draggable', 'false');
+          
           const textSpan = taskElement.querySelector('.task-text');
           if (textSpan) {
             const currentText = task.text;
@@ -3787,27 +3790,27 @@ class DailyPlanner {
               .replace(/>/g, '&gt;')
               .replace(/"/g, '&quot;');
             textSpan.innerHTML = `
-              <div class="flex items-center gap-2 w-full">
-                <input type="text" 
-                       id="edit-input-${taskId}"
-                       class="flex-1 min-w-0 px-3 py-2 border ${isDark ? 'bg-gray-600 border-gray-500 text-gray-100' : 'bg-white border-gray-300 text-gray-700'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                       value="${escapedText}"
-                       onkeydown="if(event.key === 'Enter') { event.preventDefault(); planner.editTask('${taskId}', this.value); } else if(event.key === 'Escape') { planner.updateTaskPanel(); }"
-                       autofocus>
+              <input type="text" 
+                     id="edit-input-${taskId}"
+                     class="flex-1 min-w-0 px-3 py-2 border ${isDark ? 'bg-gray-600 border-gray-500 text-gray-100' : 'bg-white border-gray-300 text-gray-700'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm select-text"
+                     value="${escapedText}"
+                     onkeydown="if(event.key === 'Enter') { event.preventDefault(); planner.editTask('${taskId}', this.value); } else if(event.key === 'Escape') { planner.updateTaskPanel(); }">
                 <button onclick="planner.editTask('${taskId}', document.getElementById('edit-input-${taskId}').value)"
-                        class="flex-shrink-0 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded-lg transition-colors">
+                        class="flex-shrink-0 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded-lg transition-colors ml-2">
                   保存
                 </button>
                 <button onclick="planner.updateTaskPanel()"
-                        class="flex-shrink-0 px-3 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 text-xs rounded-lg transition-colors">
+                        class="flex-shrink-0 px-3 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 text-xs rounded-lg transition-colors ml-1">
                   取消
                 </button>
-              </div>
             `;
             const input = textSpan.querySelector('input');
             if (input) {
               input.focus();
-              input.select();
+              // 延迟调用 select 确保 DOM 渲染完成
+              setTimeout(() => {
+                input.select();
+              }, 0);
             }
           }
         }
