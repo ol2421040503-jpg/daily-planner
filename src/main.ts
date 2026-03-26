@@ -3369,6 +3369,7 @@ class DailyPlanner {
   // 添加备忘录
   public addMemo(): void {
     this.editingMemoIndex = -2;  // -2 表示新增模式
+    this.showMemoPanel = true;   // 确保面板显示
     this.render();
   }
 
@@ -6007,7 +6008,7 @@ class DailyPlanner {
           <div class="absolute right-0 bottom-14 w-72 ${bgClass} rounded-xl shadow-2xl border ${isDark ? 'border-gray-700' : 'border-gray-200'} overflow-hidden"
                onclick="event.stopPropagation();"
                onmouseenter="planner.showMemoPanel = true;"
-               onmouseleave="if(planner.editingMemoIndex === -1) { planner.showMemoPanel = false; planner.render(); }">
+               onmouseleave="planner.hideMemoPanelHover();">
             <!-- 标题栏 -->
             <div class="px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between">
               <h3 class="font-semibold ${textClass} flex items-center gap-2">
