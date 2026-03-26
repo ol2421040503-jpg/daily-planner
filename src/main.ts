@@ -4402,6 +4402,22 @@ class DailyPlanner {
             }
           }
         }
+
+        // 更新日历中任务列表项的完成状态样式
+        const calendarTaskItems = dateElement.querySelectorAll('.calendar-task-item');
+        calendarTaskItems.forEach(item => {
+          const taskId = item.getAttribute('data-task-id');
+          if (taskId) {
+            const task = dayTasks.find(t => t.id === taskId);
+            if (task) {
+              if (task.completed) {
+                item.classList.add('line-through', 'opacity-50');
+              } else {
+                item.classList.remove('line-through', 'opacity-50');
+              }
+            }
+          }
+        });
       }
     }
   }
@@ -4792,7 +4808,8 @@ class DailyPlanner {
                         taskPriority === 'urgent' ? 'bg-orange-500' : 'bg-gray-400';
         
         tasksHTML += `
-          <div class="text-[11px] truncate ${task.completed ? 'line-through opacity-50' : ''} ${isDark ? 'text-gray-300' : 'text-gray-700'} flex items-center gap-1 px-1 py-0.5 rounded ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} cursor-pointer"
+          <div class="text-[11px] truncate calendar-task-item ${task.completed ? 'line-through opacity-50' : ''} ${isDark ? 'text-gray-300' : 'text-gray-700'} flex items-center gap-1 px-1 py-0.5 rounded ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} cursor-pointer"
+               data-task-id="${task.id}"
                onclick="event.stopPropagation(); planner.selectDate(new Date(${d.getFullYear()}, ${d.getMonth()}, ${d.getDate()}))">
             <span class="w-1.5 h-1.5 ${dotColor} rounded-full flex-shrink-0"></span>
             <span class="truncate">${task.text}</span>
