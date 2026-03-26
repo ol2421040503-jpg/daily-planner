@@ -3352,12 +3352,22 @@ class DailyPlanner {
     localStorage.setItem('dailyPlannerMemos', JSON.stringify(this.memos));
   }
 
-  // 显示备忘录面板
-  public showMemoPanelHover(): void {
+  // 显示备忘录面板（悬停时调用，只在面板未显示时才渲染）
+  public openMemoPanelHover(): void {
     if (!this.showMemoPanel) {
       this.showMemoPanel = true;
       this.render();
     }
+  }
+
+  // 检查是否需要关闭面板（鼠标离开容器时）
+  public checkCloseMemoPanel(event: MouseEvent): void {
+    // 如果正在编辑，不关闭
+    if (this.editingMemoIndex !== -1) {
+      return;
+    }
+    this.showMemoPanel = false;
+    this.render();
   }
 
   // 切换备忘录面板
@@ -3377,9 +3387,9 @@ class DailyPlanner {
     }
   }
 
-  // 隐藏备忘录面板
+  // 隐藏备忘录面板（已弃用，保留兼容）
   public hideMemoPanelHover(): void {
-    if (this.editingMemoIndex === -1) {  // 不在编辑状态才隐藏
+    if (this.editingMemoIndex === -1) {
       this.showMemoPanel = false;
       this.render();
     }
@@ -6007,10 +6017,11 @@ class DailyPlanner {
     
     // 入口按钮（右下角）
     const entryButton = `
-      <div class="fixed right-4 bottom-4 z-30 memo-panel-container">
+      <div class="fixed right-4 bottom-4 z-30 memo-panel-container"
+           onmouseenter="planner.openMemoPanelHover();"
+           onmouseleave="planner.checkCloseMemoPanel(event);">
         <!-- 备忘录入口按钮 -->
-        <button class="w-12 h-12 ${this.memos.length > 0 ? 'bg-amber-500' : 'bg-gray-400'} text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center relative"
-                onclick="event.stopPropagation(); planner.toggleMemoPanel();">
+        <button class="w-12 h-12 ${this.memos.length > 0 ? 'bg-amber-500' : 'bg-gray-400'} text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center relative">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
           </svg>
