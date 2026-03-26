@@ -3788,12 +3788,6 @@ class DailyPlanner {
             (actionsDiv as HTMLElement).style.display = 'none';
           }
           
-          // 隐藏第二行（优先级、时间、标签）
-          const secondRow = taskElement.querySelector('.task-meta-row');
-          if (secondRow) {
-            (secondRow as HTMLElement).style.display = 'none';
-          }
-          
           const textSpan = taskElement.querySelector('.task-text');
           if (textSpan) {
             const currentText = task.text;
@@ -4027,7 +4021,7 @@ class DailyPlanner {
               </button>
             </div>
           </div>
-          <div class="flex items-center gap-2 mt-1 ml-6 flex-wrap task-meta-row">
+          <div class="flex items-center gap-2 mt-1 ml-6 flex-wrap">
             <select onchange="planner.updateTaskPriority('${task.id}', this.value)"
                     class="text-xs px-1.5 py-0.5 rounded ${priorityBg} ${priorityColor} border-0 cursor-pointer">
               <option value="urgent-important" ${taskPriority === 'urgent-important' ? 'selected' : ''}>紧急</option>
@@ -4764,7 +4758,7 @@ class DailyPlanner {
               </button>
             </div>
           </div>
-          <div class="flex items-center gap-2 mt-1 ml-6 flex-wrap task-meta-row">
+          <div class="flex items-center gap-2 mt-1 ml-6 flex-wrap">
             <select onchange="planner.updateTaskPriority('${task.id}', this.value)"
                     class="text-xs px-1.5 py-0.5 rounded ${priorityBg} ${priorityColor} border-0 cursor-pointer">
               <option value="urgent-important" ${taskPriority === 'urgent-important' ? 'selected' : ''}>紧急</option>
