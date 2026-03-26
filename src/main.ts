@@ -3799,19 +3799,20 @@ class DailyPlanner {
               .replace(/>/g, '&gt;')
               .replace(/"/g, '&quot;');
             textSpan.innerHTML = `
-              <div class="w-full flex flex-col items-center">
+              <div class="w-full">
                 <textarea id="edit-input-${taskId}"
                        class="w-full px-2 py-1 border ${isDark ? 'bg-gray-600 border-gray-500 text-gray-100' : 'bg-white border-gray-300 text-gray-700'} rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs select-text resize-none overflow-hidden"
                        rows="1"
                        oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';"
                        onkeydown="if(event.key === 'Enter' && event.ctrlKey) { event.preventDefault(); planner.editTask('${taskId}', this.value); } else if(event.key === 'Escape') { planner.updateTaskPanel(); }">${escapedText}</textarea>
-                <div class="flex gap-2 mt-1.5">
+                <div class="flex items-center justify-center gap-3 mt-2">
                   <button onclick="planner.editTask('${taskId}', document.getElementById('edit-input-${taskId}').value)"
-                          class="px-4 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded-full transition-colors">
+                          class="text-blue-500 hover:text-blue-600 text-xs font-medium transition-colors">
                     保存
                   </button>
+                  <span class="text-gray-300">|</span>
                   <button onclick="planner.updateTaskPanel()"
-                          class="px-4 py-1 bg-gray-200 hover:bg-gray-300 text-gray-600 text-xs rounded-full transition-colors">
+                          class="text-gray-400 hover:text-gray-600 text-xs transition-colors">
                     取消
                   </button>
                 </div>
