@@ -6009,9 +6009,8 @@ class DailyPlanner {
         <!-- 悬停面板 -->
         ${this.showMemoPanel ? `
           <div class="absolute right-0 bottom-14 w-72 ${bgClass} rounded-xl shadow-2xl border ${isDark ? 'border-gray-700' : 'border-gray-200'} overflow-hidden"
-               onclick="console.log('[Panel] clicked'); event.stopPropagation();"
-               onmouseenter="console.log('[Panel] mouseenter'); planner.showMemoPanel = true;"
-               onmouseleave="console.log('[Panel] mouseleave'); planner.hideMemoPanelHover();">
+               onclick="event.stopPropagation();"
+               onmouseleave="planner.hideMemoPanelHover();">
             <!-- 标题栏 -->
             <div class="px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between">
               <h3 class="font-semibold ${textClass} flex items-center gap-2">
@@ -6037,7 +6036,7 @@ class DailyPlanner {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                   </svg>
                   <p class="text-sm">暂无备忘录</p>
-                  <button onclick="console.log('[Button] 添加备忘 clicked'); planner.addMemo(); return false;"
+                  <button onclick="event.stopPropagation(); planner.addMemo(); return false;"
                           class="mt-2 px-3 py-1 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
                     添加备忘
                   </button>
