@@ -3779,6 +3779,12 @@ class DailyPlanner {
           // 禁用拖拽，避免干扰文本选择
           (taskElement as HTMLElement).setAttribute('draggable', 'false');
           
+          // 隐藏操作按钮
+          const actionsDiv = taskElement.querySelector('.task-actions');
+          if (actionsDiv) {
+            (actionsDiv as HTMLElement).style.display = 'none';
+          }
+          
           const textSpan = taskElement.querySelector('.task-text');
           if (textSpan) {
             const currentText = task.text;
@@ -3984,8 +3990,7 @@ class DailyPlanner {
                    onchange="planner.toggleTask('${task.id}')"
                    class="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer task-checkbox flex-shrink-0">
             <span class="task-text block flex-1 min-w-0 text-sm ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} select-text whitespace-pre-wrap">${task.text}</span>
-            <span class="text-xs text-gray-400 flex-shrink-0">${task.time}</span>
-            <div class="flex items-center gap-1 flex-shrink-0">
+            <div class="flex items-center gap-1 flex-shrink-0 task-actions">
               <button onclick="planner.startEditTask('${task.id}')"
                       class="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
                       title="编辑">
@@ -4009,7 +4014,7 @@ class DailyPlanner {
               </button>
             </div>
           </div>
-          <div class="flex items-center gap-2 mt-1 ml-6">
+          <div class="flex items-center gap-2 mt-1 ml-6 flex-wrap">
             <select onchange="planner.updateTaskPriority('${task.id}', this.value)"
                     class="text-xs px-1.5 py-0.5 rounded ${priorityBg} ${priorityColor} border-0 cursor-pointer">
               <option value="urgent-important" ${taskPriority === 'urgent-important' ? 'selected' : ''}>紧急</option>
@@ -4017,6 +4022,7 @@ class DailyPlanner {
               <option value="urgent" ${taskPriority === 'urgent' ? 'selected' : ''}>急办</option>
               <option value="normal" ${taskPriority === 'normal' ? 'selected' : ''}>普通</option>
             </select>
+            ${task.time ? `<span class="text-xs text-gray-400">${task.time}</span>` : ''}
             ${tagsDisplay}
           </div>
         </div>
@@ -4710,52 +4716,53 @@ class DailyPlanner {
       }
       
       tasksList += `
-        <div class="flex items-start gap-2 p-2 ${taskBg} ${taskHover} rounded-lg group transition-colors border-l-4 ${borderColor} ${task.completed ? 'task-completed' : ''}"
+        <div class="p-2 ${taskBg} ${taskHover} rounded-lg group transition-colors border-l-4 ${borderColor} ${task.completed ? 'task-completed' : ''}"
              draggable="true"
              ondragstart="planner.onTaskDragStart(event, '${task.id}')"
              ondblclick="if(!event.target.closest('input') && !event.target.closest('select') && !event.target.closest('button')) planner.startEditTask('${task.id}')"
              data-task-id="${task.id}">
-          <input type="checkbox"
-                 ${task.completed ? 'checked' : ''}
-                 onchange="planner.toggleTask('${task.id}')"
-                 class="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer task-checkbox mt-1 flex-shrink-0">
-          <div class="flex-1 min-w-0">
-            <span class="task-text block text-sm ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} select-text whitespace-pre-wrap">${task.text}</span>
-            <div class="flex items-center gap-2 mt-1 flex-wrap">
-              <select onchange="planner.updateTaskPriority('${task.id}', this.value)"
-                      class="text-[10px] px-1 py-0.5 rounded ${priorityBg} ${priorityColor} border-0 cursor-pointer">
-                <option value="urgent-important" ${taskPriority === 'urgent-important' ? 'selected' : ''}>紧急</option>
-                <option value="important" ${taskPriority === 'important' ? 'selected' : ''}>重要</option>
-                <option value="urgent" ${taskPriority === 'urgent' ? 'selected' : ''}>急办</option>
-                <option value="normal" ${taskPriority === 'normal' ? 'selected' : ''}>普通</option>
-              </select>
-              ${taskTagsHTML}
+          <div class="flex items-center gap-2">
+            <input type="checkbox"
+                   ${task.completed ? 'checked' : ''}
+                   onchange="planner.toggleTask('${task.id}')"
+                   class="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer task-checkbox flex-shrink-0">
+            <span class="task-text block flex-1 min-w-0 text-sm ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} select-text whitespace-pre-wrap">${task.text}</span>
+            <div class="flex items-center gap-1 flex-shrink-0 task-actions">
+              <button onclick="planner.startEditTask('${task.id}')"
+                      class="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                      title="编辑">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+              </button>
+              <button onclick="planner.openCopyModal('${task.id}')"
+                      class="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                      title="复制">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                </svg>
+              </button>
+              <button onclick="planner.deleteTask('${task.id}')"
+                      class="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                      title="删除">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </button>
             </div>
-            ${guideHTML}
           </div>
-          <div class="flex items-center gap-0.5 flex-shrink-0 mt-1">
-            <button onclick="planner.startEditTask('${task.id}')"
-                    class="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
-                    title="编辑">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-              </svg>
-            </button>
-            <button onclick="planner.openCopyModal('${task.id}')"
-                    class="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
-                    title="复制">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-              </svg>
-            </button>
-            <button onclick="planner.deleteTask('${task.id}')"
-                    class="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
-                    title="删除">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-              </svg>
-            </button>
+          <div class="flex items-center gap-2 mt-1 ml-6 flex-wrap">
+            <select onchange="planner.updateTaskPriority('${task.id}', this.value)"
+                    class="text-xs px-1.5 py-0.5 rounded ${priorityBg} ${priorityColor} border-0 cursor-pointer">
+              <option value="urgent-important" ${taskPriority === 'urgent-important' ? 'selected' : ''}>紧急</option>
+              <option value="important" ${taskPriority === 'important' ? 'selected' : ''}>重要</option>
+              <option value="urgent" ${taskPriority === 'urgent' ? 'selected' : ''}>急办</option>
+              <option value="normal" ${taskPriority === 'normal' ? 'selected' : ''}>普通</option>
+            </select>
+            ${task.time ? `<span class="text-xs text-gray-400">${task.time}</span>` : ''}
+            ${taskTagsHTML}
           </div>
+          ${guideHTML}
         </div>
       `;
     });
