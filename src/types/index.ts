@@ -21,6 +21,8 @@ export interface Task {
   time: string;
   priority: TaskPriority;
   tags: string[];  // 标签ID数组
+  guideId?: string;  // 关联的知识库ID
+  recurringScheduleId?: string;  // 关联的循环日程ID
 }
 
 /** 按日期分组的任务 */
@@ -50,6 +52,28 @@ export interface Anniversary {
   day: number;    // 1-31
   type: 'birthday' | 'anniversary' | 'custom';
   isLunar?: boolean;  // 是否是农历日期
+}
+
+// ==================== 循环日程相关类型 ====================
+
+/** 循环类型 */
+export type RecurrenceType = 'weekly' | 'monthly';
+
+/** 循环日程接口 */
+export interface RecurringSchedule {
+  id: string;
+  name: string;              // 日程名称
+  time: string;              // 提醒时间 HH:mm
+  recurrenceType: RecurrenceType;  // 循环类型：按周/按月
+  weekdays?: number[];       // 按周循环：选中的星期几 (0=周日, 1=周一, ..., 6=周六)
+  monthDay?: number;         // 按月循环：每月几号 (1-31)
+  createdAt: string;         // 创建时间
+  startDate: string;         // 开始日期 YYYY-MM-DD
+}
+
+/** 循环日程存储 */
+export interface RecurringScheduleStorage {
+  schedules: RecurringSchedule[];
 }
 
 // ==================== 统计相关类型 ====================

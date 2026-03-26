@@ -456,6 +456,7 @@ interface Task {
   priority: TaskPriority;
   tags: string[];  // 标签ID数组
   guideId?: string; // 关联的知识库ID
+  recurringScheduleId?: string;  // 关联的循环日程ID
 }
 
 interface DateTasks {
@@ -469,6 +470,21 @@ interface Anniversary {
   day: number;    // 1-31
   type: 'birthday' | 'anniversary' | 'custom';
   isLunar?: boolean;  // 是否是农历日期
+}
+
+// 循环日程类型
+type RecurrenceType = 'weekly' | 'monthly';
+
+// 循环日程接口
+interface RecurringSchedule {
+  id: string;
+  name: string;              // 日程名称
+  time: string;              // 提醒时间 HH:mm
+  recurrenceType: RecurrenceType;  // 循环类型：按周/按月
+  weekdays?: number[];       // 按周循环：选中的星期几 (0=周日, 1=周一, ..., 6=周六)
+  monthDay?: number;         // 按月循环：每月几号 (1-31)
+  createdAt: string;         // 创建时间
+  startDate: string;         // 开始日期 YYYY-MM-DD
 }
 
 interface MonthlyStats {
@@ -605,6 +621,11 @@ class DailyPlanner {
   private knowledgeSearchKeyword: string = '';  // 知识库搜索关键词
   private showGuideSaveConfirm: boolean = false;  // 显示指南保存确认弹窗
   
+  // 循环日程相关
+  private recurringSchedules: RecurringSchedule[] = [];  // 所有循环日程
+  private showRecurringScheduleModal: boolean = false;  // 显示循环日程弹窗
+  private editingRecurringSchedule: RecurringSchedule | null = null;  // 正在编辑的循环日程
+  
   // 提醒配置
   private reminderConfig = {
     anniversary: 3,   // 纪念日提前3天
@@ -647,6 +668,8 @@ class DailyPlanner {
     this.render();
     // 异步加载知识库
     this.initKnowledgeGuides();
+    // 加载循环日程
+    this.recurringSchedules = this.loadRecurringSchedules();
   }
   
   // 异步初始化知识库
@@ -3092,6 +3115,200 @@ class DailyPlanner {
     localStorage.setItem('dailyPlannerAnniversaries', JSON.stringify(this.anniversaries));
   }
 
+  // ==================== 循环日程相关 ====================
+  
+  // 加载循环日程
+  private loadRecurringSchedules(): RecurringSchedule[] {
+    const saved = localStorage.getItem('dailyPlannerRecurringSchedules');
+    return saved ? JSON.parse(saved) : [];
+  }
+
+  // 保存循环日程
+  private saveRecurringSchedules(): void {
+    localStorage.setItem('dailyPlannerRecurringSchedules', JSON.stringify(this.recurringSchedules));
+  }
+
+  // 打开循环日程管理弹窗
+  public openRecurringScheduleModal(): void {
+    this.showRecurringScheduleModal = true;
+    this.editingRecurringSchedule = null;
+    this.render();
+  }
+
+  // 关闭循环日程管理弹窗
+  public closeRecurringScheduleModal(): void {
+    this.showRecurringScheduleModal = false;
+    this.editingRecurringSchedule = null;
+    this.render();
+  }
+
+  // 打开创建/编辑循环日程弹窗
+  public openEditRecurringSchedule(scheduleId?: string): void {
+    if (scheduleId) {
+      this.editingRecurringSchedule = this.recurringSchedules.find(s => s.id === scheduleId) || null;
+    } else {
+      // 创建新的循环日程
+      this.editingRecurringSchedule = {
+        id: '',
+        name: '',
+        time: '',
+        recurrenceType: 'weekly',
+        weekdays: [],
+        monthDay: 1,
+        createdAt: new Date().toISOString(),
+        startDate: this.formatDate(new Date())
+      };
+    }
+    this.render();
+  }
+
+  // 取消编辑循环日程
+  public cancelEditRecurringSchedule(): void {
+    this.editingRecurringSchedule = null;
+    this.render();
+  }
+
+  // 更新编辑中的循环日程
+  public updateEditingRecurringSchedule(field: string, value: unknown): void {
+    if (!this.editingRecurringSchedule) return;
+    if (field === 'name') {
+      this.editingRecurringSchedule.name = value as string;
+    } else if (field === 'time') {
+      this.editingRecurringSchedule.time = value as string;
+    } else if (field === 'recurrenceType') {
+      this.editingRecurringSchedule.recurrenceType = value as RecurrenceType;
+    } else if (field === 'monthDay') {
+      this.editingRecurringSchedule.monthDay = value as number;
+    } else if (field === 'startDate') {
+      this.editingRecurringSchedule.startDate = value as string;
+    }
+    this.render();
+  }
+
+  // 切换星期选择
+  public toggleWeekday(day: number): void {
+    if (!this.editingRecurringSchedule) return;
+    if (!this.editingRecurringSchedule.weekdays) {
+      this.editingRecurringSchedule.weekdays = [];
+    }
+    const index = this.editingRecurringSchedule.weekdays.indexOf(day);
+    if (index > -1) {
+      this.editingRecurringSchedule.weekdays.splice(index, 1);
+    } else {
+      this.editingRecurringSchedule.weekdays.push(day);
+      this.editingRecurringSchedule.weekdays.sort((a: number, b: number) => a - b);
+    }
+    this.render();
+  }
+
+  // 保存循环日程
+  public saveRecurringSchedule(): void {
+    if (!this.editingRecurringSchedule) return;
+    if (!this.editingRecurringSchedule.name.trim()) {
+      alert('请输入日程名称');
+      return;
+    }
+    
+    const isNew = !this.editingRecurringSchedule!.id;
+    if (isNew) {
+      this.editingRecurringSchedule!.id = Date.now().toString();
+      this.recurringSchedules.push(this.editingRecurringSchedule!);
+    } else {
+      const index = this.recurringSchedules.findIndex(s => s.id === this.editingRecurringSchedule!.id);
+      if (index > -1) {
+        this.recurringSchedules[index] = this.editingRecurringSchedule!;
+      }
+    }
+    
+    this.saveRecurringSchedules();
+    this.editingRecurringSchedule = null;
+    
+    // 如果是新创建的，生成对应的任务
+    if (isNew) {
+      this.generateRecurringTasks(this.recurringSchedules[this.recurringSchedules.length - 1]);
+    }
+    
+    this.render();
+  }
+
+  // 生成循环日程的任务
+  private generateRecurringTasks(schedule: RecurringSchedule): void {
+    const startDate = parseLocalDate(schedule.startDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // 生成未来90天的任务
+    for (let i = 0; i < 90; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      
+      if (date < today) continue;  // 只生成今天及以后的
+      
+      let shouldCreate = false;
+      
+      if (schedule.recurrenceType === 'weekly' && schedule.weekdays) {
+        const dayOfWeek = date.getDay();
+        shouldCreate = schedule.weekdays.includes(dayOfWeek);
+      } else if (schedule.recurrenceType === 'monthly' && schedule.monthDay) {
+        shouldCreate = date.getDate() === schedule.monthDay;
+      }
+      
+      if (shouldCreate) {
+        const dateKey = this.formatDate(date);
+        if (!this.tasks[dateKey]) {
+          this.tasks[dateKey] = [];
+        }
+        
+        // 检查是否已存在相同的任务
+        const existingTask = this.tasks[dateKey].find(t => 
+          t.text === schedule.name && t.recurringScheduleId === schedule.id
+        );
+        
+        if (!existingTask) {
+          const task: Task = {
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            text: schedule.name,
+            date: dateKey,
+            completed: false,
+            priority: 'normal',
+            time: schedule.time || '',
+            tags: [],
+            recurringScheduleId: schedule.id  // 标记来源
+          };
+          this.tasks[dateKey].push(task);
+        }
+      }
+    }
+    
+    this.saveTasks();
+  }
+
+  // 删除循环日程及其生成的任务
+  public deleteRecurringSchedule(scheduleId: string): void {
+    if (!confirm('确定要删除这个循环日程吗？这将删除所有由该日程生成的未来任务。')) {
+      return;
+    }
+    
+    // 删除所有由该循环日程生成的未来任务
+    const today = this.formatDate(new Date());
+    Object.keys(this.tasks).forEach(dateKey => {
+      if (dateKey >= today) {
+        this.tasks[dateKey] = this.tasks[dateKey].filter(task => 
+          task.recurringScheduleId !== scheduleId
+        );
+        if (this.tasks[dateKey].length === 0) {
+          delete this.tasks[dateKey];
+        }
+      }
+    });
+    
+    // 从列表中移除
+    this.recurringSchedules = this.recurringSchedules.filter(s => s.id !== scheduleId);
+    this.saveRecurringSchedules();
+    this.saveTasks();
+    this.render();
+  }
+
   // 切换主题
   private setTheme(theme: BackgroundTheme): void {
     this.currentTheme = theme;
@@ -5477,6 +5694,199 @@ class DailyPlanner {
     `;
   }
 
+  // 生成循环日程管理弹窗HTML
+  private generateRecurringScheduleModalHTML(): string {
+    if (!this.showRecurringScheduleModal) return '';
+    
+    const isDark = this.themeMode === 'dark';
+    const bgClass = isDark ? 'bg-gray-800' : 'bg-white';
+    const textClass = isDark ? 'text-gray-100' : 'text-gray-800';
+    const labelClass = isDark ? 'text-gray-400' : 'text-gray-500';
+    const inputBg = isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300';
+    const cardBg = isDark ? 'bg-gray-700' : 'bg-gray-50';
+    const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+
+    // 如果正在编辑，显示编辑表单
+    if (this.editingRecurringSchedule) {
+      const schedule = this.editingRecurringSchedule;
+      const isWeekly = schedule.recurrenceType === 'weekly';
+      
+      return `
+        <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
+             onclick="planner.cancelEditRecurringSchedule();">
+          <div class="${bgClass} rounded-xl shadow-2xl p-6 w-full max-w-md"
+               onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-xl font-bold ${textClass}">${schedule.id ? '编辑' : '创建'}循环日程</h2>
+              <button onclick="planner.cancelEditRecurringSchedule();"
+                      class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+
+            <!-- 日程名称 -->
+            <div class="mb-4">
+              <label class="block text-sm ${labelClass} mb-1">日程名称</label>
+              <input type="text" value="${schedule.name}"
+                     onchange="planner.updateEditingRecurringSchedule('name', this.value)"
+                     class="w-full px-3 py-2 ${inputBg} border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${textClass}"
+                     placeholder="输入日程名称">
+            </div>
+
+            <!-- 提醒时间 -->
+            <div class="mb-4">
+              <label class="block text-sm ${labelClass} mb-1">提醒时间（可选）</label>
+              <input type="time" value="${schedule.time || ''}"
+                     onchange="planner.updateEditingRecurringSchedule('time', this.value)"
+                     class="w-full px-3 py-2 ${inputBg} border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${textClass}">
+            </div>
+
+            <!-- 循环类型 -->
+            <div class="mb-4">
+              <label class="block text-sm ${labelClass} mb-2">循环类型</label>
+              <div class="flex gap-2">
+                <button onclick="planner.updateEditingRecurringSchedule('recurrenceType', 'weekly')"
+                        class="flex-1 py-2 px-4 rounded-lg transition-all ${isWeekly ? 'bg-blue-500 text-white' : `${cardBg} ${textClass}`}">
+                  按周循环
+                </button>
+                <button onclick="planner.updateEditingRecurringSchedule('recurrenceType', 'monthly')"
+                        class="flex-1 py-2 px-4 rounded-lg transition-all ${!isWeekly ? 'bg-blue-500 text-white' : `${cardBg} ${textClass}`}">
+                  按月循环
+                </button>
+              </div>
+            </div>
+
+            ${isWeekly ? `
+              <!-- 按周循环：选择星期几 -->
+              <div class="mb-4">
+                <label class="block text-sm ${labelClass} mb-2">选择星期几</label>
+                <div class="flex gap-2">
+                  ${weekDays.map((day, index) => {
+                    const isSelected = schedule.weekdays?.includes(index);
+                    return `
+                      <button onclick="planner.toggleWeekday(${index})"
+                              class="w-10 h-10 rounded-lg transition-all flex items-center justify-center font-medium
+                                     ${isSelected ? 'bg-blue-500 text-white' : `${cardBg} ${textClass}`}">
+                        ${day}
+                      </button>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            ` : `
+              <!-- 按月循环：选择日期 -->
+              <div class="mb-4">
+                <label class="block text-sm ${labelClass} mb-2">每月几号</label>
+                <select onchange="planner.updateEditingRecurringSchedule('monthDay', parseInt(this.value))"
+                        class="w-full px-3 py-2 ${inputBg} border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${textClass}">
+                  ${Array.from({length: 31}, (_, i) => i + 1).map(day => `
+                    <option value="${day}" ${schedule.monthDay === day ? 'selected' : ''}>每月 ${day} 号</option>
+                  `).join('')}
+                </select>
+              </div>
+            `}
+
+            <!-- 开始日期 -->
+            <div class="mb-6">
+              <label class="block text-sm ${labelClass} mb-1">开始日期</label>
+              <input type="date" value="${schedule.startDate}"
+                     onchange="planner.updateEditingRecurringSchedule('startDate', this.value)"
+                     class="w-full px-3 py-2 ${inputBg} border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${textClass}">
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="flex gap-3">
+              <button onclick="planner.cancelEditRecurringSchedule();"
+                      class="flex-1 py-2 px-4 ${cardBg} ${textClass} rounded-lg transition-colors hover:opacity-80">
+                取消
+              </button>
+              <button onclick="planner.saveRecurringSchedule();"
+                      class="flex-1 py-2 px-4 bg-blue-500 text-white rounded-lg transition-colors hover:bg-blue-600">
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // 显示列表
+    return `
+      <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
+           onclick="planner.closeRecurringScheduleModal();">
+        <div class="${bgClass} rounded-xl shadow-2xl p-6 w-full max-w-lg"
+             onclick="event.stopPropagation()">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold ${textClass}">🔄 循环日程管理</h2>
+            <button onclick="planner.closeRecurringScheduleModal();"
+                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+              <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- 创建按钮 -->
+          <button onclick="planner.openEditRecurringSchedule();"
+                  class="w-full mb-4 py-3 border-2 border-dashed ${isDark ? 'border-gray-600 hover:border-blue-400' : 'border-gray-300 hover:border-blue-400'} rounded-xl transition-colors flex items-center justify-center gap-2 ${labelClass} hover:text-blue-500">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            创建循环日程
+          </button>
+
+          <!-- 日程列表 -->
+          ${this.recurringSchedules.length === 0 ? `
+            <div class="text-center py-8 ${labelClass}">
+              <svg class="w-16 h-16 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              </svg>
+              <p>暂无循环日程</p>
+              <p class="text-xs mt-1">点击上方按钮创建</p>
+            </div>
+          ` : `
+            <div class="space-y-2 max-h-[60vh] overflow-y-auto">
+              ${this.recurringSchedules.map(schedule => {
+                const typeLabel = schedule.recurrenceType === 'weekly' 
+                  ? `每${schedule.weekdays?.map((d: number) => '周' + weekDays[d]).join('、')}` 
+                  : `每月${schedule.monthDay}号`;
+                return `
+                  <div class="p-3 ${cardBg} rounded-lg flex items-center justify-between group">
+                    <div class="flex-1 min-w-0">
+                      <div class="font-medium ${textClass} truncate">${schedule.name}</div>
+                      <div class="text-xs ${labelClass} mt-0.5">
+                        ${typeLabel}
+                        ${schedule.time ? ` · ${schedule.time}` : ''}
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onclick="planner.openEditRecurringSchedule('${schedule.id}');"
+                              class="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                              title="编辑">
+                        <svg class="w-4 h-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                      </button>
+                      <button onclick="planner.deleteRecurringSchedule('${schedule.id}');"
+                              class="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                              title="删除">
+                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
+        </div>
+      </div>
+    `;
+  }
+
   // 生成复制任务弹窗HTML
   private generateCopyModalHTML(): string {
     if (!this.showCopyModal || !this.copyingTask) return '';
@@ -5950,6 +6360,13 @@ class DailyPlanner {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9v-2a2 2 0 00-2-2H8a2 2 0 00-2 2v2h12z"/>
             </svg>
             纪念日管理
+          </button>
+          <button onclick="planner.openRecurringScheduleModal(); planner.showMoreMenu = false;"
+                  class="flex items-center gap-2 px-4 py-2 w-full ${textClass} ${hoverClass} transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            循环日程
           </button>
           <button onclick="planner.showReminderSettings = true; planner.showMoreMenu = false; planner.render();"
                   class="flex items-center gap-2 px-4 py-2 w-full ${textClass} ${hoverClass} transition-colors">
@@ -8506,6 +8923,7 @@ class DailyPlanner {
       ${this.generateUpdateModalHTML()}
       ${this.generateShortcutHelpHTML()}
       ${this.generateContactInfoHTML()}
+      ${this.generateRecurringScheduleModalHTML()}
       ${this.generateKnowledgeBaseHTML()}
       ${this.generateSaveStatusHTML()}
     `;
