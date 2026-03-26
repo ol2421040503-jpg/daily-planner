@@ -22,9 +22,16 @@ const IMAGE_COMPRESSION_CONFIG = {
 };
 
 // ==================== 版本配置 ====================
-const APP_VERSION = '1.6.7';
+const APP_VERSION = '1.6.8';
 const VERSION_CHECK_URL = 'https://your-server.com/api/version'; // 替换为你的版本检查API
 const RELEASE_NOTES: Record<string, string[]> = {
+  '1.6.8': [
+    '🎨 标签图标改为 SVG 格式',
+    '✨ 新增 150+ 精美 SVG 图标供自定义标签选择',
+    '💡 鼠标悬停标签显示名称提示',
+    '🐛 修复切换日期时标签和知识库不显示的问题',
+    '💄 优化界面标题显示'
+  ],
   '1.0.0': [
     '✨ 首次发布',
     '📅 支持日历视图（月/周/日）',
