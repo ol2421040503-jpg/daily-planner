@@ -3977,13 +3977,22 @@ class DailyPlanner {
       const taskTags = (task.tags || []).map(tagId => {
         const tag = this.getTagById(tagId);
         if (tag) {
-          return `<span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded ${tag.color} ${tag.textColor}"><span class="text-sm">${tag.icon}</span><span class="font-medium">${tag.name}</span></span>`;
+          return `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs ${tag.color} ${tag.textColor}">${tag.icon} ${tag.name}</span>`;
         }
         return '';
-      }).join('');
+      }).filter(Boolean).join('');
 
       // 如果没有标签，显示添加标签按钮
-      const tagsDisplay = taskTags.length > 0 ? taskTags : `<button onclick="event.stopPropagation(); planner.showQuickTagSelector('${task.id}')" class="text-xs text-gray-400 hover:text-blue-500 hover:underline cursor-pointer">+ 添加标签</button>`;
+      const tagsDisplay = taskTags ? taskTags : `<button onclick="event.stopPropagation(); planner.showQuickTagSelector('${task.id}')" class="text-xs text-gray-400 hover:text-blue-500 hover:underline cursor-pointer">+ 添加标签</button>`;
+      
+      // 获取关联知识库显示HTML
+      let guideHTML = '';
+      if (task.guideId) {
+        const guide = this.knowledgeGuides.find(g => g.id === task.guideId);
+        if (guide) {
+          guideHTML = `<div class="mt-1"><button onclick="event.stopPropagation(); planner.openGuideFromTask('${task.guideId}')" class="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-purple-900/50 text-purple-300 hover:bg-purple-800/50' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'} transition-colors"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>${guide.name}</button></div>`;
+        }
+      }
       
       tasksList += `
         <div class="p-2 ${taskBg} ${taskHover} rounded-lg group transition-colors border-l-4 ${borderColor} ${task.completed ? 'task-completed' : ''}"
@@ -4032,6 +4041,7 @@ class DailyPlanner {
             ${task.time ? `<span class="text-xs text-gray-400">${task.time}</span>` : ''}
             ${tagsDisplay}
           </div>
+          ${guideHTML}
         </div>
       `;
     });
@@ -4699,19 +4709,16 @@ class DailyPlanner {
       const borderColor = priority.borderColor;
       
       // 获取任务的标签显示HTML
-      let taskTagsHTML = '';
-      if (task.tags && task.tags.length > 0) {
-        const taskTags = task.tags.map(tagId => {
-          const tag = this.getTagById(tagId);
-          if (tag) {
-            return `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs ${tag.color} ${tag.textColor}">${tag.icon} ${tag.name}</span>`;
-          }
-          return '';
-        }).filter(Boolean).join('');
-        if (taskTags) {
-          taskTagsHTML = `<div class="flex flex-wrap gap-1 mt-1">${taskTags}</div>`;
+      const taskTags = (task.tags || []).map(tagId => {
+        const tag = this.getTagById(tagId);
+        if (tag) {
+          return `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs ${tag.color} ${tag.textColor}">${tag.icon} ${tag.name}</span>`;
         }
-      }
+        return '';
+      }).filter(Boolean).join('');
+
+      // 如果没有标签，显示添加标签按钮
+      const tagsDisplay = taskTags ? taskTags : `<button onclick="event.stopPropagation(); planner.showQuickTagSelector('${task.id}')" class="text-xs text-gray-400 hover:text-blue-500 hover:underline cursor-pointer">+ 添加标签</button>`;
       
       // 获取关联知识库显示HTML
       let guideHTML = '';
@@ -4767,7 +4774,7 @@ class DailyPlanner {
               <option value="normal" ${taskPriority === 'normal' ? 'selected' : ''}>普通</option>
             </select>
             ${task.time ? `<span class="text-xs text-gray-400">${task.time}</span>` : ''}
-            ${taskTagsHTML}
+            ${tagsDisplay}
           </div>
           ${guideHTML}
         </div>
