@@ -32,6 +32,7 @@
     "eslint": "^9",
     "only-allow": "^1.2.2",
     "postcss": "^8.4.49",
+    "serve": "^14.2.6",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8",
