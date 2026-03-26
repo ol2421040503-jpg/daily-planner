@@ -3799,20 +3799,19 @@ class DailyPlanner {
               .replace(/>/g, '&gt;')
               .replace(/"/g, '&quot;');
             textSpan.innerHTML = `
-              <div class="w-full">
+              <div class="flex items-start gap-2 w-full">
                 <textarea id="edit-input-${taskId}"
-                       class="w-full px-2 py-1 border ${isDark ? 'bg-gray-600 border-gray-500 text-gray-100' : 'bg-white border-gray-300 text-gray-700'} rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs select-text resize-none overflow-hidden"
+                       class="flex-1 min-w-0 px-1.5 py-0.5 border ${isDark ? 'bg-gray-600 border-gray-500 text-gray-100' : 'bg-white border-gray-300 text-gray-700'} rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs select-text resize-none overflow-hidden leading-relaxed"
                        rows="1"
                        oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';"
                        onkeydown="if(event.key === 'Enter' && event.ctrlKey) { event.preventDefault(); planner.editTask('${taskId}', this.value); } else if(event.key === 'Escape') { planner.updateTaskPanel(); }">${escapedText}</textarea>
-                <div class="flex items-center justify-center gap-3 mt-2">
+                <div class="flex flex-col gap-1 pt-0.5">
                   <button onclick="planner.editTask('${taskId}', document.getElementById('edit-input-${taskId}').value)"
-                          class="text-blue-500 hover:text-blue-600 text-xs font-medium transition-colors">
+                          class="text-[10px] text-blue-500 hover:text-blue-600 font-medium whitespace-nowrap">
                     保存
                   </button>
-                  <span class="text-gray-300">|</span>
                   <button onclick="planner.updateTaskPanel()"
-                          class="text-gray-400 hover:text-gray-600 text-xs transition-colors">
+                          class="text-[10px] text-gray-400 hover:text-gray-500 whitespace-nowrap">
                     取消
                   </button>
                 </div>
