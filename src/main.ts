@@ -3790,19 +3790,21 @@ class DailyPlanner {
               .replace(/>/g, '&gt;')
               .replace(/"/g, '&quot;');
             textSpan.innerHTML = `
-              <input type="text" 
-                     id="edit-input-${taskId}"
-                     class="flex-1 min-w-0 px-3 py-2 border ${isDark ? 'bg-gray-600 border-gray-500 text-gray-100' : 'bg-white border-gray-300 text-gray-700'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm select-text"
-                     value="${escapedText}"
-                     onkeydown="if(event.key === 'Enter') { event.preventDefault(); planner.editTask('${taskId}', this.value); } else if(event.key === 'Escape') { planner.updateTaskPanel(); }">
+              <div class="flex items-center gap-1 w-full">
+                <input type="text" 
+                       id="edit-input-${taskId}"
+                       class="flex-1 min-w-0 px-2 py-1 border ${isDark ? 'bg-gray-600 border-gray-500 text-gray-100' : 'bg-white border-gray-300 text-gray-700'} rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs select-text"
+                       value="${escapedText}"
+                       onkeydown="if(event.key === 'Enter') { event.preventDefault(); planner.editTask('${taskId}', this.value); } else if(event.key === 'Escape') { planner.updateTaskPanel(); }">
                 <button onclick="planner.editTask('${taskId}', document.getElementById('edit-input-${taskId}').value)"
-                        class="flex-shrink-0 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded-lg transition-colors ml-2">
+                        class="flex-shrink-0 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-[10px] rounded transition-colors">
                   保存
                 </button>
                 <button onclick="planner.updateTaskPanel()"
-                        class="flex-shrink-0 px-3 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 text-xs rounded-lg transition-colors ml-1">
+                        class="flex-shrink-0 px-2 py-1 bg-gray-300 hover:bg-gray-400 text-gray-700 text-[10px] rounded transition-colors">
                   取消
                 </button>
+              </div>
             `;
             const input = textSpan.querySelector('input');
             if (input) {
@@ -3981,7 +3983,7 @@ class DailyPlanner {
                    ${task.completed ? 'checked' : ''}
                    onchange="planner.toggleTask('${task.id}')"
                    class="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer task-checkbox flex-shrink-0">
-            <span class="task-text flex-1 min-w-0 text-sm ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} select-text truncate">${task.text}</span>
+            <span class="task-text block flex-1 min-w-0 text-sm ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} select-text whitespace-pre-wrap">${task.text}</span>
             <span class="text-xs text-gray-400 flex-shrink-0">${task.time}</span>
             <div class="flex items-center gap-1 flex-shrink-0">
               <button onclick="planner.startEditTask('${task.id}')"
