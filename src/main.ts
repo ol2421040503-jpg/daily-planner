@@ -5991,7 +5991,8 @@ class DailyPlanner {
            onmouseenter="planner.showMemoPanelHover();"
            onmouseleave="planner.hideMemoPanelHover();">
         <!-- 备忘录入口按钮 -->
-        <button class="w-12 h-12 ${this.memos.length > 0 ? 'bg-amber-500' : 'bg-gray-400'} text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center relative">
+        <button class="w-12 h-12 ${this.memos.length > 0 ? 'bg-amber-500' : 'bg-gray-400'} text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center relative"
+                onclick="event.stopPropagation(); planner.showMemoPanel = true; planner.render();">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
           </svg>
@@ -6005,8 +6006,9 @@ class DailyPlanner {
         <!-- 悬停面板 -->
         ${this.showMemoPanel ? `
           <div class="absolute right-0 bottom-14 w-72 ${bgClass} rounded-xl shadow-2xl border ${isDark ? 'border-gray-700' : 'border-gray-200'} overflow-hidden"
+               onclick="event.stopPropagation();"
                onmouseenter="planner.showMemoPanel = true;"
-               onmouseleave="planner.hideMemoPanelHover();">
+               onmouseleave="if(planner.editingMemoIndex < 0) { planner.showMemoPanel = false; planner.render(); }">
             <!-- 标题栏 -->
             <div class="px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between">
               <h3 class="font-semibold ${textClass} flex items-center gap-2">
@@ -6015,7 +6017,7 @@ class DailyPlanner {
                 </svg>
                 备忘录
               </h3>
-              <button onclick="planner.addMemo();"
+              <button onclick="event.stopPropagation(); planner.addMemo();"
                       class="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
                       title="添加备忘">
                 <svg class="w-4 h-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -6032,6 +6034,10 @@ class DailyPlanner {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                   </svg>
                   <p class="text-sm">暂无备忘录</p>
+                  <button onclick="event.stopPropagation(); planner.addMemo();"
+                          class="mt-2 px-3 py-1 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
+                    添加备忘
+                  </button>
                 </div>
               ` : `
                 ${this.memos.map((memo, index) => `
@@ -6043,11 +6049,11 @@ class DailyPlanner {
                                 rows="3"
                                 placeholder="输入备忘内容...">${memo}</textarea>
                       <div class="flex justify-end gap-2 mt-2">
-                        <button onclick="planner.cancelMemoEdit();"
+                        <button onclick="event.stopPropagation(); planner.cancelMemoEdit();"
                                 class="px-2 py-1 text-xs ${cardBg} ${textClass} rounded hover:opacity-80">
                           取消
                         </button>
-                        <button onclick="planner.saveMemoContent(document.getElementById('memo-edit-${index}').value);"
+                        <button onclick="event.stopPropagation(); planner.saveMemoContent(document.getElementById('memo-edit-${index}').value);"
                                 class="px-2 py-1 text-xs bg-amber-500 text-white rounded hover:bg-amber-600">
                           保存
                         </button>
@@ -6057,15 +6063,15 @@ class DailyPlanner {
                     <!-- 显示模式 -->
                     <div class="group p-2 ${cardBg} rounded-lg mb-2 relative">
                       <p class="text-sm ${textClass} whitespace-pre-wrap break-words pr-10">${memo}</p>
-                      <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onclick="planner.editMemo(${index});"
+                      <div class="absolute top-2 right-2 flex gap-1">
+                        <button onclick="event.stopPropagation(); planner.editMemo(${index});"
                                 class="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
                                 title="编辑">
                           <svg class="w-3.5 h-3.5 ${isDark ? 'text-gray-300' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                           </svg>
                         </button>
-                        <button onclick="planner.deleteMemo(${index});"
+                        <button onclick="event.stopPropagation(); planner.deleteMemo(${index});"
                                 class="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
                                 title="删除">
                           <svg class="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -6085,11 +6091,11 @@ class DailyPlanner {
                               rows="3"
                               placeholder="输入备忘内容..."></textarea>
                     <div class="flex justify-end gap-2 mt-2">
-                      <button onclick="planner.cancelMemoEdit();"
+                      <button onclick="event.stopPropagation(); planner.cancelMemoEdit();"
                               class="px-2 py-1 text-xs ${cardBg} ${textClass} rounded hover:opacity-80">
                         取消
                       </button>
-                      <button onclick="planner.saveMemoContent(document.getElementById('memo-new').value);"
+                      <button onclick="event.stopPropagation(); planner.saveMemoContent(document.getElementById('memo-new').value);"
                               class="px-2 py-1 text-xs bg-amber-500 text-white rounded hover:bg-amber-600">
                         保存
                       </button>
