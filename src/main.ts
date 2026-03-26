@@ -8093,7 +8093,7 @@ class DailyPlanner {
            onclick="if(planner.showTaskPanel && !event.target.closest('.task-panel') && !event.target.closest('[data-date]')) { planner.closeTaskPanel(); }">
         <div class="max-w-4xl mx-auto">
           <div class="flex items-center justify-between mb-6 relative z-50 flex-wrap gap-2">
-            <h1 class="text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}">${this.viewMode === 'month' ? `每日规划 <span class="text-base font-normal ${isDark ? 'text-gray-400' : 'text-gray-500'}">v${APP_VERSION}</span>` : `周规划 <span class="text-base font-normal ${isDark ? 'text-gray-400' : 'text-gray-500'}">v${APP_VERSION}</span>`}</h1>
+            <h1 class="text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}">${this.viewMode === 'month' ? '每日规划' : '周规划'}</h1>
             <div class="flex items-center gap-2 flex-wrap">
               <button onclick="event.stopPropagation(); planner.jumpToToday()"
                       class="px-3 py-2 ${isDark ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white rounded-lg transition-colors shadow-md text-sm font-medium"
