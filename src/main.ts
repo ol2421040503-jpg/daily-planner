@@ -3953,7 +3953,7 @@ class DailyPlanner {
     if (!contentWrapper) return;
 
     // 更新面板内容
-    const tasks = this.getSelectedDateTasks();
+    const tasks = this.getSortedTasks(this.getSelectedDateTasks());
     const dateStr = this.formatDate(displayDate);
     const lunarText = this.getLunarFullText(displayDate);
     const holidayInfo = this.getHolidayInfo(displayDate);
