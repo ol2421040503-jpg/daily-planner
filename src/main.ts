@@ -154,17 +154,39 @@ interface KnowledgeGuide {
   updatedAt: number;    // 更新时间
 }
 
+// 标签 SVG 图标映射
+const TAG_SVG_ICONS: Record<string, string> = {
+  work: `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 7V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v3"/></svg>`,
+  life: `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>`,
+  study: `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
+  health: `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`,
+  finance: `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M9 9h6M9 15h6"/></svg>`,
+  social: `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  travel: `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>`,
+  shopping: `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>`,
+};
+
+// 获取标签图标 SVG
+function getTagIconSVG(tagId: string, icon?: string): string {
+  // 如果有预定义的 SVG 图标，使用它
+  if (TAG_SVG_ICONS[tagId]) {
+    return TAG_SVG_ICONS[tagId];
+  }
+  // 否则使用原始 icon（可能是 emoji 或自定义 SVG 字符串）
+  return icon || '';
+}
+
 // 预设标签配置
 // 预设标签（用户可自行删除）
 const DEFAULT_TAGS: Tag[] = [
-  { id: 'work', name: '工作', color: 'bg-blue-100', textColor: 'text-blue-700', icon: '💼' },
-  { id: 'life', name: '生活', color: 'bg-green-100', textColor: 'text-green-700', icon: '🏠' },
-  { id: 'study', name: '学习', color: 'bg-purple-100', textColor: 'text-purple-700', icon: '📚' },
-  { id: 'health', name: '健康', color: 'bg-red-100', textColor: 'text-red-700', icon: '💪' },
-  { id: 'finance', name: '财务', color: 'bg-yellow-100', textColor: 'text-yellow-700', icon: '💰' },
-  { id: 'social', name: '社交', color: 'bg-pink-100', textColor: 'text-pink-700', icon: '👥' },
-  { id: 'travel', name: '出行', color: 'bg-orange-100', textColor: 'text-orange-700', icon: '✈️' },
-  { id: 'shopping', name: '购物', color: 'bg-indigo-100', textColor: 'text-indigo-700', icon: '🛒' },
+  { id: 'work', name: '工作', color: 'bg-blue-100', textColor: 'text-blue-700', icon: 'briefcase' },
+  { id: 'life', name: '生活', color: 'bg-green-100', textColor: 'text-green-700', icon: 'home' },
+  { id: 'study', name: '学习', color: 'bg-purple-100', textColor: 'text-purple-700', icon: 'book' },
+  { id: 'health', name: '健康', color: 'bg-red-100', textColor: 'text-red-700', icon: 'heart' },
+  { id: 'finance', name: '财务', color: 'bg-yellow-100', textColor: 'text-yellow-700', icon: 'coin' },
+  { id: 'social', name: '社交', color: 'bg-pink-100', textColor: 'text-pink-700', icon: 'users' },
+  { id: 'travel', name: '出行', color: 'bg-orange-100', textColor: 'text-orange-700', icon: 'plane' },
+  { id: 'shopping', name: '购物', color: 'bg-indigo-100', textColor: 'text-indigo-700', icon: 'cart' },
 ];
 
 // 可选图标列表
@@ -4520,7 +4542,7 @@ class DailyPlanner {
               class="text-xs px-2 py-1 rounded ${isDark ? 'bg-gray-700 text-gray-300 border-gray-600' : 'bg-gray-100 text-gray-600 border-gray-200'} border cursor-pointer">
         <option value="" ${!this.selectedTagFilter ? 'selected' : ''}>全部标签</option>
         ${allTags.map(tag => 
-          `<option value="${tag.id}" ${this.selectedTagFilter === tag.id ? 'selected' : ''}>${tag.icon} ${tag.name}</option>`
+          `<option value="${tag.id}" ${this.selectedTagFilter === tag.id ? 'selected' : ''}>${tag.name}</option>`
         ).join('')}
       </select>
     `;
@@ -4537,7 +4559,7 @@ class DailyPlanner {
       const taskTags = (task.tags || []).map(tagId => {
         const tag = this.getTagById(tagId);
         if (tag) {
-          return `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs ${tag.color} ${tag.textColor}">${tag.icon} ${tag.name}</span>`;
+          return `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs ${tag.color} ${tag.textColor}">${getTagIconSVG(tag.id, tag.icon)} ${tag.name}</span>`;
         }
         return '';
       }).filter(Boolean).join('');
@@ -4690,9 +4712,10 @@ class DailyPlanner {
               ${this.getAllTags().slice(0, 6).map(tag => `
                 <button type="button"
                         data-tag-id="${tag.id}"
+                        title="${tag.name}"
                         onclick="event.stopPropagation(); planner.toggleTagSelection('${tag.id}')"
-                        class="text-[10px] px-1.5 py-0.5 rounded-full transition-all ${tag.color} ${tag.textColor} hover:opacity-80 ${this.selectedTagsForTask.has(tag.id) ? 'ring-2 ring-blue-500 ring-offset-1' : ''}">
-                  ${tag.icon}${this.selectedTagsForTask.has(tag.id) ? ' ✓' : ''}
+                        class="text-[10px] px-1.5 py-0.5 rounded-full transition-all ${tag.color} ${tag.textColor} hover:opacity-80 flex items-center gap-0.5 ${this.selectedTagsForTask.has(tag.id) ? 'ring-2 ring-blue-500 ring-offset-1' : ''}">
+                  ${getTagIconSVG(tag.id, tag.icon)}${this.selectedTagsForTask.has(tag.id) ? ' ✓' : ''}
                 </button>
               `).join('')}
               ${this.getAllTags().length > 6 ? `
@@ -5197,7 +5220,7 @@ class DailyPlanner {
                       ondragleave="this.classList.remove('ring-2', 'ring-blue-400');"
                       ondrop="planner.onTagDrop(event, '${tag.id}')"
                       ondragend="event.stopPropagation(); this.classList.remove('ring-2', 'ring-blue-400');">
-                  ${tag.icon} ${tag.name}
+                  ${getTagIconSVG(tag.id, tag.icon)} ${tag.name}
                   <button onclick="event.stopPropagation(); planner.deleteTag('${tag.id}')"
                           class="ml-1 w-4 h-4 rounded-full bg-black bg-opacity-20 hover:bg-opacity-40 flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity"
                           title="删除标签">×</button>
@@ -5304,8 +5327,9 @@ class DailyPlanner {
           <div class="flex flex-wrap gap-2">
             ${allTags.map(tag => `
               <button onclick="planner.toggleTaskTag('${tag.id}')"
+                      title="${tag.name}"
                       class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm ${tag.color} ${tag.textColor} ${currentTags.includes(tag.id) ? 'ring-2 ring-offset-1 ring-blue-500' : ''} hover:opacity-80 transition-opacity">
-                ${tag.icon} ${tag.name} ${currentTags.includes(tag.id) ? '✓' : ''}
+                ${getTagIconSVG(tag.id, tag.icon)} ${tag.name} ${currentTags.includes(tag.id) ? '✓' : ''}
               </button>
             `).join('')}
           </div>
