@@ -22,7 +22,7 @@ const IMAGE_COMPRESSION_CONFIG = {
 };
 
 // ==================== 版本配置 ====================
-const APP_VERSION = '1.6.6';
+const APP_VERSION = '1.6.7';
 const VERSION_CHECK_URL = 'https://your-server.com/api/version'; // 替换为你的版本检查API
 const RELEASE_NOTES: Record<string, string[]> = {
   '1.0.0': [
@@ -3971,14 +3971,14 @@ class DailyPlanner {
         <div class="p-3 ${taskBg} ${taskHover} rounded-lg group transition-colors border-l-4 ${borderColor} ${task.completed ? 'task-completed' : ''}"
              draggable="true"
              ondragstart="planner.onTaskDragStart(event, '${task.id}')"
-             ondblclick="planner.startEditTask('${task.id}')"
+             ondblclick="if(!event.target.closest('input') && !event.target.closest('select') && !event.target.closest('button')) planner.startEditTask('${task.id}')"
              data-task-id="${task.id}">
           <div class="flex items-center gap-3">
             <input type="checkbox"
                    ${task.completed ? 'checked' : ''}
                    onchange="planner.toggleTask('${task.id}')"
                    class="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer task-checkbox">
-            <span class="task-text flex-1 ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} cursor-pointer">${task.text}</span>
+            <span class="task-text flex-1 ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} select-text">${task.text}</span>
             <select onchange="planner.updateTaskPriority('${task.id}', this.value)"
                     class="text-xs px-2 py-1 rounded ${priorityBg} ${priorityColor} border-0 cursor-pointer whitespace-nowrap">
               <option value="urgent-important" ${taskPriority === 'urgent-important' ? 'selected' : ''}>紧急重要</option>
@@ -3989,7 +3989,7 @@ class DailyPlanner {
             <span class="text-xs text-gray-400">${task.time}</span>
             <button onclick="planner.startEditTask('${task.id}')"
                     class="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all"
-                    title="编辑任务">
+                    title="编辑任务 (或双击任务文字)">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
               </svg>
@@ -4704,14 +4704,14 @@ class DailyPlanner {
         <div class="flex items-start gap-2 p-2 ${taskBg} ${taskHover} rounded-lg group transition-colors border-l-4 ${borderColor} ${task.completed ? 'task-completed' : ''}"
              draggable="true"
              ondragstart="planner.onTaskDragStart(event, '${task.id}')"
-             ondblclick="planner.startEditTask('${task.id}')"
+             ondblclick="if(!event.target.closest('input') && !event.target.closest('select') && !event.target.closest('button')) planner.startEditTask('${task.id}')"
              data-task-id="${task.id}">
           <input type="checkbox"
                  ${task.completed ? 'checked' : ''}
                  onchange="planner.toggleTask('${task.id}')"
                  class="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer task-checkbox mt-1 flex-shrink-0">
           <div class="flex-1 min-w-0">
-            <span class="task-text block text-sm ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} cursor-pointer whitespace-pre-wrap">${task.text}</span>
+            <span class="task-text block text-sm ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} select-text whitespace-pre-wrap">${task.text}</span>
             ${taskTagsHTML}
             ${guideHTML}
           </div>
@@ -4728,7 +4728,7 @@ class DailyPlanner {
           <div class="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button onclick="planner.startEditTask('${task.id}')"
                     class="p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                    title="编辑任务">
+                    title="编辑任务 (或双击任务文字)">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
               </svg>
@@ -8010,7 +8010,7 @@ class DailyPlanner {
            onclick="if(planner.showTaskPanel && !event.target.closest('.task-panel') && !event.target.closest('[data-date]')) { planner.closeTaskPanel(); }">
         <div class="max-w-4xl mx-auto">
           <div class="flex items-center justify-between mb-6 relative z-50 flex-wrap gap-2">
-            <h1 class="text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}">${this.viewMode === 'month' ? '每日规划' : '周规划'}</h1>
+            <h1 class="text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}">${this.viewMode === 'month' ? `每日规划 <span class="text-base font-normal ${isDark ? 'text-gray-400' : 'text-gray-500'}">v${APP_VERSION}</span>` : `周规划 <span class="text-base font-normal ${isDark ? 'text-gray-400' : 'text-gray-500'}">v${APP_VERSION}</span>`}</h1>
             <div class="flex items-center gap-2 flex-wrap">
               <button onclick="event.stopPropagation(); planner.jumpToToday()"
                       class="px-3 py-2 ${isDark ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white rounded-lg transition-colors shadow-md text-sm font-medium"
