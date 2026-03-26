@@ -3779,6 +3779,9 @@ class DailyPlanner {
           // 禁用拖拽，避免干扰文本选择
           (taskElement as HTMLElement).setAttribute('draggable', 'false');
           
+          // 隐藏左边框
+          (taskElement as HTMLElement).style.borderLeftWidth = '0';
+          
           // 隐藏操作按钮
           const actionsDiv = taskElement.querySelector('.task-actions');
           if (actionsDiv) {
