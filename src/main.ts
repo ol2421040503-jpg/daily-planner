@@ -5988,8 +5988,7 @@ class DailyPlanner {
     // 入口按钮（右下角）
     const entryButton = `
       <div class="fixed right-4 bottom-4 z-30"
-           onmouseenter="planner.showMemoPanelHover();"
-           onmouseleave="planner.hideMemoPanelHover();">
+           onmouseenter="planner.showMemoPanelHover();">
         <!-- 备忘录入口按钮 -->
         <button class="w-12 h-12 ${this.memos.length > 0 ? 'bg-amber-500' : 'bg-gray-400'} text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center relative"
                 onclick="event.stopPropagation(); planner.showMemoPanel = true; planner.render();">
