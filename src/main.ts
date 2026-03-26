@@ -1189,18 +1189,23 @@ class DailyPlanner {
     // 只更新标签按钮样式，不重新渲染整个页面（避免输入框内容丢失）
     const btn = document.querySelector(`[data-tag-id="${tagId}"]`);
     if (btn) {
+      // 查找或创建勾选标记 span
+      let checkSpan = btn.querySelector('.tag-check-mark');
       if (this.selectedTagsForTask.has(tagId)) {
         btn.classList.add('ring-2', 'ring-blue-500', 'ring-offset-1');
-        // 更新按钮文本
-        const currentText = btn.textContent || '';
-        if (!currentText.includes('✓')) {
-          btn.textContent = currentText + ' ✓';
+        // 添加勾选标记
+        if (!checkSpan) {
+          checkSpan = document.createElement('span');
+          checkSpan.className = 'tag-check-mark';
+          checkSpan.textContent = ' ✓';
+          btn.appendChild(checkSpan);
         }
       } else {
         btn.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-1');
-        // 移除 ✓
-        const currentText = btn.textContent || '';
-        btn.textContent = currentText.replace(/\s*✓/g, '');
+        // 移除勾选标记
+        if (checkSpan) {
+          checkSpan.remove();
+        }
       }
     }
   }
@@ -5169,7 +5174,7 @@ class DailyPlanner {
                         title="${tag.name}"
                         onclick="event.stopPropagation(); planner.toggleTagSelection('${tag.id}')"
                         class="text-[10px] px-1.5 py-0.5 rounded-full transition-all ${tag.color} ${tag.textColor} hover:opacity-80 flex items-center gap-0.5 ${this.selectedTagsForTask.has(tag.id) ? 'ring-2 ring-blue-500 ring-offset-1' : ''}">
-                  ${getTagIconSVG(tag.id, tag.icon)}${this.selectedTagsForTask.has(tag.id) ? ' ✓' : ''}
+                  ${getTagIconSVG(tag.id, tag.icon)}<span class="tag-check-mark">${this.selectedTagsForTask.has(tag.id) ? ' ✓' : ''}</span>
                 </button>
               `).join('')}
               ${this.getAllTags().length > 6 ? `
