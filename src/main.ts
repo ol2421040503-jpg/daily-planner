@@ -603,6 +603,7 @@ class DailyPlanner {
   private editingGuideId: string = '';  // 正在编辑的指南ID
   private viewingGuideId: string = '';  // 正在查看的指南ID（只读模式）
   private knowledgeSearchKeyword: string = '';  // 知识库搜索关键词
+  private showGuideSaveConfirm: boolean = false;  // 显示指南保存确认弹窗
   
   // 提醒配置
   private reminderConfig = {
@@ -2625,6 +2626,37 @@ class DailyPlanner {
     this.editingGuideId = '';
     this.viewingGuideId = '';
     this.render();
+  }
+  
+  // 处理知识库弹窗背景点击（编辑指南时显示确认弹窗）
+  public handleKnowledgeBaseBackdropClick(): void {
+    // 如果正在编辑指南，显示确认保存弹窗
+    if (this.currentGuide && !this.viewingGuideId) {
+      this.showGuideSaveConfirm = true;
+      this.render();
+    } else {
+      // 否则直接关闭
+      this.closeKnowledgeBase();
+    }
+  }
+  
+  // 取消保存确认弹窗
+  public cancelGuideSaveConfirm(): void {
+    this.showGuideSaveConfirm = false;
+    this.render();
+  }
+  
+  // 确认不保存，直接关闭
+  public confirmDiscardGuide(): void {
+    this.showGuideSaveConfirm = false;
+    this.closeKnowledgeBase();
+  }
+  
+  // 确认保存后关闭
+  public confirmSaveAndClose(): void {
+    this.saveGuideWithStatus();
+    this.showGuideSaveConfirm = false;
+    this.closeKnowledgeBase();
   }
   
   // 关闭知识库
@@ -6466,6 +6498,68 @@ class DailyPlanner {
         </div>
       </div>
       ${this.generateEnlargedImageHTML()}
+      ${this.generateGuideSaveConfirmHTML()}
+    `;
+  }
+
+  // 生成指南保存确认弹窗 HTML
+  private generateGuideSaveConfirmHTML(): string {
+    if (!this.showGuideSaveConfirm) return '';
+    
+    const isDark = this.themeMode === 'dark';
+    
+    return `
+      <div class="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[70]">
+        <div class="${isDark ? 'bg-gray-800' : 'bg-white'} rounded-3xl shadow-2xl p-8 w-full max-w-md transform transition-all duration-300 scale-100 opacity-100"
+             onclick="event.stopPropagation()">
+          
+          <!-- 图标动画 -->
+          <div class="flex justify-center mb-6">
+            <div class="w-20 h-20 rounded-full ${isDark ? 'bg-amber-900/30' : 'bg-amber-100'} flex items-center justify-center">
+              <svg class="w-10 h-10 text-amber-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              </svg>
+            </div>
+          </div>
+          
+          <!-- 标题 -->
+          <h3 class="text-xl font-bold text-center ${isDark ? 'text-gray-100' : 'text-gray-800'} mb-2">
+            离开前是否保存？
+          </h3>
+          
+          <!-- 描述 -->
+          <p class="text-center ${isDark ? 'text-gray-400' : 'text-gray-500'} mb-8">
+            您有未保存的更改，离开将会丢失这些内容
+          </p>
+          
+          <!-- 按钮组 -->
+          <div class="flex flex-col gap-3">
+            <!-- 保存按钮 -->
+            <button onclick="planner.confirmSaveAndClose();"
+                    class="w-full py-3.5 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              保存并关闭
+            </button>
+            
+            <!-- 不保存按钮 -->
+            <button onclick="planner.confirmDiscardGuide();"
+                    class="w-full py-3.5 ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'} ${isDark ? 'text-gray-300' : 'text-gray-700'} font-medium rounded-xl transition-all duration-200 flex items-center justify-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+              不保存
+            </button>
+            
+            <!-- 取消按钮 -->
+            <button onclick="planner.cancelGuideSaveConfirm();"
+                    class="w-full py-3 text-${isDark ? 'gray-400 hover:text-gray-300' : 'gray-500 hover:text-gray-600'} font-medium rounded-xl transition-all duration-200">
+              取消
+            </button>
+          </div>
+        </div>
+      </div>
     `;
   }
 
@@ -6602,7 +6696,7 @@ class DailyPlanner {
     
     return `
       <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
-           onclick="planner.closeKnowledgeBase();">
+           onclick="planner.handleKnowledgeBaseBackdropClick();">
         <div class="${bgClass} rounded-2xl shadow-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
              onclick="event.stopPropagation()">
           
