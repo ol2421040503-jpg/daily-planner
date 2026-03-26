@@ -4825,6 +4825,14 @@ class DailyPlanner {
         `;
       }
 
+      // 计算指示器颜色
+      let indicatorHTML = '';
+      if (dayTasks.length > 0) {
+        const completedTasks = dayTasks.filter(task => task.completed).length;
+        const indicatorColor = completedTasks === dayTasks.length ? 'bg-green-500' : 'bg-orange-500';
+        indicatorHTML = `<div class="task-indicator absolute bottom-1 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 rounded-full ${indicatorColor}"></div>`;
+      }
+
       return `
         <div class="min-h-[100px] ${bgClass} ${bgOpacity} rounded-lg shadow cursor-pointer transition-all hover:shadow-md ${today ? 'ring-2 ring-blue-500' : ''} ${selected ? 'ring-2 ring-blue-400' : ''} relative overflow-hidden"
              data-date="${dateKey}"
@@ -4843,6 +4851,7 @@ class DailyPlanner {
           <div class="px-1 pb-1 space-y-0.5">
             ${tasksHTML}
           </div>
+          ${indicatorHTML}
         </div>
       `;
     };
