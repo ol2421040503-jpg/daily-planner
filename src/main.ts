@@ -6033,7 +6033,7 @@ class DailyPlanner {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                   </svg>
                   <p class="text-sm">暂无备忘录</p>
-                  <button onclick="event.stopPropagation(); planner.addMemo(); return false;"
+                  <button onclick="console.log('[Button] clicked'); planner.addMemo(); event.stopPropagation(); return false;"
                           class="mt-2 px-3 py-1 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
                     添加备忘
                   </button>
@@ -8962,6 +8962,8 @@ class DailyPlanner {
 
   // 渲染整个应用
   private render(): void {
+    console.log('[Render] showMemoPanel:', this.showMemoPanel, 'editingMemoIndex:', this.editingMemoIndex);
+    console.trace('[Render] call stack');
     const app = document.getElementById('app');
     if (!app) return;
 
