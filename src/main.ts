@@ -630,6 +630,7 @@ class DailyPlanner {
   private memos: string[] = [];  // 备忘录列表
   private showMemoPanel: boolean = false;  // 显示备忘录面板
   private editingMemoIndex: number = -1;  // 正在编辑的备忘录索引
+  private memoPanelCloseTimer: ReturnType<typeof setTimeout> | null = null;  // 关闭定时器
   
   // 提醒配置
   private reminderConfig = {
@@ -3354,9 +3355,23 @@ class DailyPlanner {
 
   // 显示备忘录面板（悬停时调用，只在面板未显示时才渲染）
   public openMemoPanelHover(): void {
+    // 取消关闭定时器
+    if (this.memoPanelCloseTimer) {
+      clearTimeout(this.memoPanelCloseTimer);
+      this.memoPanelCloseTimer = null;
+    }
     if (!this.showMemoPanel) {
       this.showMemoPanel = true;
       this.render();
+    }
+  }
+
+  // 保持面板打开（鼠标进入面板时调用）
+  public keepMemoPanelOpen(): void {
+    // 取消关闭定时器
+    if (this.memoPanelCloseTimer) {
+      clearTimeout(this.memoPanelCloseTimer);
+      this.memoPanelCloseTimer = null;
     }
   }
 
@@ -3366,12 +3381,22 @@ class DailyPlanner {
     if (this.editingMemoIndex !== -1) {
       return;
     }
-    this.showMemoPanel = false;
-    this.render();
+    // 延迟关闭，给用户时间移动到面板
+    this.memoPanelCloseTimer = setTimeout(() => {
+      if (this.editingMemoIndex === -1) {
+        this.showMemoPanel = false;
+        this.render();
+      }
+    }, 100);
   }
 
   // 切换备忘录面板
   public toggleMemoPanel(): void {
+    // 取消关闭定时器
+    if (this.memoPanelCloseTimer) {
+      clearTimeout(this.memoPanelCloseTimer);
+      this.memoPanelCloseTimer = null;
+    }
     this.showMemoPanel = !this.showMemoPanel;
     if (!this.showMemoPanel) {
       this.editingMemoIndex = -1;
@@ -3381,18 +3406,14 @@ class DailyPlanner {
 
   // 关闭备忘录面板（仅用于面板上的关闭按钮）
   public closeMemoPanel(): void {
-    if (this.editingMemoIndex === -1) {
-      this.showMemoPanel = false;
-      this.render();
+    // 取消关闭定时器
+    if (this.memoPanelCloseTimer) {
+      clearTimeout(this.memoPanelCloseTimer);
+      this.memoPanelCloseTimer = null;
     }
-  }
-
-  // 隐藏备忘录面板（已弃用，保留兼容）
-  public hideMemoPanelHover(): void {
-    if (this.editingMemoIndex === -1) {
-      this.showMemoPanel = false;
-      this.render();
-    }
+    this.editingMemoIndex = -1;
+    this.showMemoPanel = false;
+    this.render();
   }
 
   // 添加备忘录
@@ -6034,7 +6055,8 @@ class DailyPlanner {
         
         <!-- 悬停面板 -->
         ${this.showMemoPanel ? `
-          <div class="absolute right-0 bottom-14 w-72 ${bgClass} rounded-xl shadow-2xl border ${isDark ? 'border-gray-700' : 'border-gray-200'} overflow-hidden">
+          <div class="absolute right-0 bottom-12 w-72 ${bgClass} rounded-xl shadow-2xl border ${isDark ? 'border-gray-700' : 'border-gray-200'} overflow-hidden pb-2"
+               onmouseenter="planner.keepMemoPanelOpen();">
             <!-- 标题栏 -->
             <div class="px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between">
               <h3 class="font-semibold ${textClass} flex items-center gap-2">
