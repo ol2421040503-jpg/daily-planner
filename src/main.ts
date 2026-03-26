@@ -3360,7 +3360,6 @@ class DailyPlanner {
 
   // 隐藏备忘录面板
   public hideMemoPanelHover(): void {
-    console.log('[Memo] hideMemoPanelHover called, editingMemoIndex:', this.editingMemoIndex);
     if (this.editingMemoIndex === -1) {  // 不在编辑状态才隐藏
       this.showMemoPanel = false;
       this.render();
@@ -3369,10 +3368,8 @@ class DailyPlanner {
 
   // 添加备忘录
   public addMemo(): void {
-    console.log('[Memo] addMemo called, editingMemoIndex:', this.editingMemoIndex, 'showMemoPanel:', this.showMemoPanel);
     this.editingMemoIndex = -2;  // -2 表示新增模式
     this.showMemoPanel = true;   // 确保面板显示
-    console.log('[Memo] after addMemo, editingMemoIndex:', this.editingMemoIndex, 'showMemoPanel:', this.showMemoPanel);
     this.render();
   }
 
@@ -8965,7 +8962,6 @@ class DailyPlanner {
 
   // 渲染整个应用
   private render(): void {
-    console.log('[Render] showMemoPanel:', this.showMemoPanel, 'editingMemoIndex:', this.editingMemoIndex, 'memos.length:', this.memos.length);
     const app = document.getElementById('app');
     if (!app) return;
 
