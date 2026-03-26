@@ -3272,7 +3272,9 @@ class DailyPlanner {
         if (task.completed) {
           this.playNotificationSound('success');
         }
-        this.render(); // 重新渲染整个页面
+        // 只更新任务面板和日历指示器，不重新渲染整个页面
+        this.updateTaskPanel();
+        this.updateCalendarIndicators();
       }
     }
   }
@@ -4194,11 +4196,175 @@ class DailyPlanner {
     const taskPanel = document.querySelector('.task-panel');
     if (!taskPanel) return;
 
-    // 使用 generateTaskPanelHTML 生成完整的面板 HTML 并替换
-    // 这确保了与 render() 方法中的面板渲染逻辑完全一致
-    const newPanelHTML = this.generateTaskPanelHTML();
-    if (newPanelHTML) {
-      taskPanel.outerHTML = newPanelHTML;
+    // 只更新面板内容，不替换整个面板（避免动画闪烁）
+    const contentWrapper = taskPanel.querySelector('.task-panel-content');
+    if (!contentWrapper) return;
+
+    // 保存当前滚动位置
+    const taskList = contentWrapper.querySelector('.overflow-y-auto');
+    const scrollPosition = taskList ? taskList.scrollTop : 0;
+
+    // 生成新的内容
+    const tasks = this.getSortedTasks(this.getSelectedDateTasks());
+    const dateStr = this.formatDate(displayDate);
+    const lunarText = this.getLunarFullText(displayDate);
+    const holidayInfo = this.getHolidayInfo(displayDate);
+    const isDark = this.themeMode === 'dark';
+    const textClass = isDark ? 'text-gray-100' : 'text-gray-800';
+    const inputBg = isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300';
+    const taskBg = isDark ? 'bg-gray-700' : 'bg-gray-50';
+    const taskHover = isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-100';
+
+    let tasksList = '';
+    tasks.forEach(task => {
+      const taskPriority: TaskPriority = (task.priority || 'normal') as TaskPriority;
+      const priority = getPriorityConfig(taskPriority);
+      const priorityBg = isDark ? priority.darkBg : priority.bgColor;
+      const priorityColor = isDark ? priority.darkColor : priority.color;
+      const borderColor = priority.borderColor;
+      
+      const taskTags = (task.tags || []).map(tagId => {
+        const tag = this.getTagById(tagId);
+        if (tag) {
+          return `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs ${tag.color} ${tag.textColor}">${getTagIconSVG(tag.id, tag.icon)} ${tag.name}</span>`;
+        }
+        return '';
+      }).filter(Boolean).join('');
+
+      const tagsDisplay = taskTags ? taskTags : `<button onclick="event.stopPropagation(); planner.showQuickTagSelector('${task.id}')" class="text-xs text-gray-400 hover:text-blue-500 hover:underline cursor-pointer">+ 添加标签</button>`;
+      
+      let guideHTML = '';
+      if (task.guideId) {
+        const guide = this.knowledgeGuides.find(g => g.id === task.guideId);
+        if (guide) {
+          guideHTML = `<div class="mt-1"><button onclick="event.stopPropagation(); planner.openGuideFromTask('${task.guideId}')" class="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-purple-900/50 text-purple-300 hover:bg-purple-800/50' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'} transition-colors"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>${guide.name}</button></div>`;
+        }
+      }
+      
+      tasksList += `
+        <div class="p-2 ${taskBg} ${taskHover} rounded-lg group transition-colors border-l-4 ${borderColor} ${task.completed ? 'task-completed' : ''}"
+             draggable="true"
+             ondragstart="planner.onTaskDragStart(event, '${task.id}')"
+             ondblclick="if(!event.target.closest('input') && !event.target.closest('select') && !event.target.closest('button')) planner.startEditTask('${task.id}')"
+             data-task-id="${task.id}">
+          <div class="flex items-center gap-2">
+            <input type="checkbox"
+                   ${task.completed ? 'checked' : ''}
+                   onchange="planner.toggleTask('${task.id}')"
+                   class="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer task-checkbox flex-shrink-0">
+            <span class="task-text flex-1 min-w-0 text-sm ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} select-text whitespace-pre-wrap break-words">${task.text}</span>
+            <div class="flex items-center gap-1 flex-shrink-0 task-actions">
+              <button onclick="planner.startEditTask('${task.id}')"
+                      class="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                      title="编辑">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+              </button>
+              <button onclick="planner.openCopyModal('${task.id}')"
+                      class="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                      title="复制">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                </svg>
+              </button>
+              <button onclick="planner.deleteTask('${task.id}')"
+                      class="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                      title="删除">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 mt-1 ml-6 flex-wrap">
+            <select onchange="planner.updateTaskPriority('${task.id}', this.value)"
+                    class="text-xs px-1.5 py-0.5 rounded ${priorityBg} ${priorityColor} border-0 cursor-pointer">
+              <option value="urgent-important" ${taskPriority === 'urgent-important' ? 'selected' : ''}>紧急</option>
+              <option value="important" ${taskPriority === 'important' ? 'selected' : ''}>重要</option>
+              <option value="urgent" ${taskPriority === 'urgent' ? 'selected' : ''}>急办</option>
+              <option value="normal" ${taskPriority === 'normal' ? 'selected' : ''}>普通</option>
+            </select>
+            ${task.time ? `<span class="text-xs text-gray-400">${task.time}</span>` : ''}
+            ${tagsDisplay}
+          </div>
+          ${guideHTML}
+        </div>
+      `;
+    });
+
+    // 检查是否有纪念日
+    const todayAnniversaries = this.getMatchingAnniversaries(displayDate);
+    
+    let anniversaryHtml = '';
+    if (todayAnniversaries.length > 0) {
+      anniversaryHtml = `
+        <div class="mb-3 p-2 bg-pink-100 dark:bg-pink-900/30 rounded-lg">
+          ${todayAnniversaries.map(a => `
+            <span class="text-pink-600 dark:text-pink-400 text-sm inline-flex items-center gap-1">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
+              ${a.name} (${a.type === 'birthday' ? '生日' : a.type === 'anniversary' ? '纪念日' : '自定义'})
+            </span>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    // 更新头部信息
+    const headerSection = contentWrapper.querySelector('.px-4.pb-3.border-b');
+    if (headerSection) {
+      headerSection.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-lg font-bold ${textClass}">${dateStr}</h2>
+          <button onclick="planner.closeTaskPanel()"
+                  class="w-6 h-6 flex items-center justify-center bg-gray-200 dark:bg-gray-600 hover:bg-red-500 dark:hover:bg-red-500 rounded-full transition-colors group"
+                  title="关闭面板">
+            <svg class="w-3.5 h-3.5 ${isDark ? 'text-gray-500 group-hover:text-white' : 'text-gray-600 group-hover:text-white'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="${isDark ? 'text-gray-400' : 'text-gray-500'}">农历 ${lunarText}</span>
+          ${holidayInfo ? (holidayInfo.holiday ? 
+            `<span class="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded">${holidayInfo.name}</span>` : 
+            `<span class="px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 rounded">调休</span>`) : ''}
+        </div>
+      `;
+    }
+
+    // 更新纪念日区域
+    let anniversaryContainer = contentWrapper.querySelector('.anniversary-section');
+    if (todayAnniversaries.length > 0) {
+      if (!anniversaryContainer) {
+        const newDiv = document.createElement('div');
+        newDiv.className = 'anniversary-section px-4';
+        newDiv.innerHTML = anniversaryHtml;
+        const addTaskSection = contentWrapper.querySelector('.px-4.py-3.border-b');
+        if (addTaskSection) {
+          addTaskSection.insertAdjacentElement('afterend', newDiv);
+        }
+      } else {
+        anniversaryContainer.innerHTML = anniversaryHtml;
+      }
+    } else if (anniversaryContainer) {
+      anniversaryContainer.remove();
+    }
+
+    // 更新任务列表
+    const taskListSection = contentWrapper.querySelector('.overflow-y-auto.px-4');
+    if (taskListSection) {
+      taskListSection.innerHTML = tasks.length > 0 ? tasksList : `<p class="text-gray-400 text-center py-8 text-sm">暂无任务</p>`;
+      // 恢复滚动位置
+      taskListSection.scrollTop = scrollPosition;
+    }
+
+    // 更新底部统计
+    const statsSection = contentWrapper.querySelector('.px-4.py-2.border-t');
+    if (statsSection) {
+      statsSection.innerHTML = `共 ${tasks.length} 个任务，已完成 ${tasks.filter(t => t.completed).length} 个`;
     }
   }
 
