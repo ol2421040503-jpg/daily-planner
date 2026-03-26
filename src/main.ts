@@ -3996,7 +3996,7 @@ class DailyPlanner {
                    ${task.completed ? 'checked' : ''}
                    onchange="planner.toggleTask('${task.id}')"
                    class="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer task-checkbox flex-shrink-0">
-            <span class="task-text block flex-1 min-w-0 text-sm ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} select-text whitespace-pre-wrap">${task.text}</span>
+            <span class="task-text flex-1 min-w-0 text-sm ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} select-text whitespace-pre-wrap break-words">${task.text}</span>
             <div class="flex items-center gap-1 flex-shrink-0 task-actions">
               <button onclick="planner.startEditTask('${task.id}')"
                       class="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
@@ -4733,7 +4733,7 @@ class DailyPlanner {
                    ${task.completed ? 'checked' : ''}
                    onchange="planner.toggleTask('${task.id}')"
                    class="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer task-checkbox flex-shrink-0">
-            <span class="task-text block flex-1 min-w-0 text-sm ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} select-text whitespace-pre-wrap">${task.text}</span>
+            <span class="task-text flex-1 min-w-0 text-sm ${task.completed ? 'line-through text-gray-400' : isDark ? 'text-gray-200' : 'text-gray-700'} select-text whitespace-pre-wrap break-words">${task.text}</span>
             <div class="flex items-center gap-1 flex-shrink-0 task-actions">
               <button onclick="planner.startEditTask('${task.id}')"
                       class="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
