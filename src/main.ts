@@ -2503,6 +2503,15 @@ class DailyPlanner {
   // 添加步骤
   public addStepToGuide(): void {
     if (!this.currentGuide) return;
+    
+    // 先保存所有现有 textarea 的当前内容
+    this.currentGuide.steps.forEach(step => {
+      const textarea = document.getElementById(`step-content-${step.id}`) as HTMLTextAreaElement;
+      if (textarea) {
+        step.content = textarea.value;
+      }
+    });
+    
     const newStep: KnowledgeStep = {
       id: Date.now().toString(),
       title: '',
@@ -2517,6 +2526,15 @@ class DailyPlanner {
   // 删除步骤
   public deleteStep(stepId: string): void {
     if (!this.currentGuide) return;
+    
+    // 先保存所有现有 textarea 的当前内容
+    this.currentGuide.steps.forEach(step => {
+      const textarea = document.getElementById(`step-content-${step.id}`) as HTMLTextAreaElement;
+      if (textarea) {
+        step.content = textarea.value;
+      }
+    });
+    
     this.currentGuide.steps = this.currentGuide.steps.filter(s => s.id !== stepId);
     // 重新排序
     this.currentGuide.steps.forEach((s, i) => s.order = i);
