@@ -5321,10 +5321,22 @@ class DailyPlanner {
       }
       
       // 生成任务列表（最多显示3个，多的显示 +X more）
+      // 先对任务排序：未完成的在前，按优先级排序，同优先级按时间排序
+      const sortedDayTasks = [...dayTasks].sort((a, b) => {
+        // 已完成的任务放最后
+        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+        // 未完成任务按优先级排序
+        const pa = getPriorityConfig(a.priority).order;
+        const pb = getPriorityConfig(b.priority).order;
+        if (pa !== pb) return pa - pb;
+        // 同优先级按时间排序
+        return (a.time || '').localeCompare(b.time || '');
+      });
+      
       let tasksHTML = '';
       const maxVisible = 3;
-      const visibleTasks = dayTasks.slice(0, maxVisible);
-      const hiddenCount = dayTasks.length - maxVisible;
+      const visibleTasks = sortedDayTasks.slice(0, maxVisible);
+      const hiddenCount = sortedDayTasks.length - maxVisible;
       
       visibleTasks.forEach(task => {
         const taskPriority = (task.priority || 'normal') as TaskPriority;
@@ -8961,7 +8973,16 @@ class DailyPlanner {
             <div class="text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}">${lunarText}</div>
           </div>
           <div class="space-y-1 max-h-48 overflow-y-auto" onclick="planner.selectDate(new Date(${year}, ${month}, ${day}))">
-            ${dayTasks.length > 0 ? dayTasks.map(task => {
+            ${dayTasks.length > 0 ? [...dayTasks].sort((a, b) => {
+              // 已完成的任务放最后
+              if (a.completed !== b.completed) return a.completed ? 1 : -1;
+              // 未完成任务按优先级排序
+              const pa = getPriorityConfig(a.priority).order;
+              const pb = getPriorityConfig(b.priority).order;
+              if (pa !== pb) return pa - pb;
+              // 同优先级按时间排序
+              return (a.time || '').localeCompare(b.time || '');
+            }).map(task => {
               const taskPriority = (task.priority || 'normal') as TaskPriority;
               const priorityConfig = PRIORITY_CONFIG[taskPriority] || PRIORITY_CONFIG['normal'];
               return `
