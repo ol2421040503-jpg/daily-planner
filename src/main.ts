@@ -6172,7 +6172,7 @@ class DailyPlanner {
     
     // 入口按钮（左上角）
     const entryButton = `
-      <div class="fixed left-4 top-4 z-30 memo-panel-container"
+      <div class="fixed left-4 top-16 z-30 memo-panel-container"
            onmouseenter="planner.openMemoPanelHover();"
            onmouseleave="planner.checkCloseMemoPanel(event);">
         <!-- 备忘录入口按钮 -->
