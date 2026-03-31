@@ -676,13 +676,21 @@ class DailyPlanner {
     this.initKnowledgeGuides();
     // 加载循环日程
     this.recurringSchedules = this.loadRecurringSchedules();
-    // 加载备忘录
-    this.memos = this.loadMemos();
+    // 补充生成循环日程任务（支持永久循环）
+    this.regenerateRecurringTasks();
+    // 异步加载备忘录（优先使用 Electron 文件存储）
+    this.initMemos();
   }
   
   // 异步初始化知识库
   private async initKnowledgeGuides(): Promise<void> {
     this.knowledgeGuides = await this.loadKnowledgeGuides();
+    this.render();
+  }
+
+  // 异步初始化备忘录
+  private async initMemos(): Promise<void> {
+    this.memos = await this.loadMemosAsync();
     this.render();
   }
 
@@ -3280,14 +3288,14 @@ class DailyPlanner {
     this.saveTasks();
   }
 
-  // 生成循环日程的任务
+  // 生成循环日程的任务（生成未来1年的任务）
   private generateRecurringTasks(schedule: RecurringSchedule): void {
     const startDate = parseLocalDate(schedule.startDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // 生成未来90天的任务
-    for (let i = 0; i < 90; i++) {
+    // 生成未来365天的任务（1年）
+    for (let i = 0; i < 365; i++) {
       const date = new Date(startDate);
       date.setDate(date.getDate() + i);
       
@@ -3332,6 +3340,65 @@ class DailyPlanner {
     this.saveTasks();
   }
 
+  // 补充生成循环日程任务（启动时调用，确保始终有足够的未来任务）
+  private regenerateRecurringTasks(): void {
+    if (this.recurringSchedules.length === 0) return;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = this.formatDate(today);
+    
+    // 计算未来1年的日期
+    const oneYearLater = new Date(today);
+    oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+    
+    // 遍历所有循环日程，检查并补充生成任务
+    this.recurringSchedules.forEach(schedule => {
+      const startDate = parseLocalDate(schedule.startDate);
+      
+      // 从今天开始检查到未来1年
+      for (let d = new Date(today); d <= oneYearLater; d.setDate(d.getDate() + 1)) {
+        let shouldCreate = false;
+        
+        if (schedule.recurrenceType === 'weekly' && schedule.weekdays) {
+          const dayOfWeek = d.getDay();
+          shouldCreate = schedule.weekdays.includes(dayOfWeek);
+        } else if (schedule.recurrenceType === 'monthly' && schedule.monthDay) {
+          shouldCreate = d.getDate() === schedule.monthDay;
+        }
+        
+        if (shouldCreate && d >= startDate) {
+          const dateKey = this.formatDate(d);
+          
+          // 检查是否已存在该循环日程的任务
+          if (!this.tasks[dateKey]) {
+            this.tasks[dateKey] = [];
+          }
+          
+          const existingTask = this.tasks[dateKey].find(t => 
+            t.recurringScheduleId === schedule.id
+          );
+          
+          if (!existingTask) {
+            const task: Task = {
+              id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+              text: schedule.name,
+              date: dateKey,
+              completed: false,
+              priority: 'normal',
+              time: schedule.time || '',
+              tags: [],
+              recurringScheduleId: schedule.id
+            };
+            this.tasks[dateKey].push(task);
+          }
+        }
+      }
+    });
+    
+    this.saveTasks();
+  }
+
   // 删除循环日程及其生成的任务
   public deleteRecurringSchedule(scheduleId: string): void {
     if (!confirm('确定要删除这个循环日程吗？这将删除所有由该日程生成的未来任务。')) {
@@ -3360,15 +3427,41 @@ class DailyPlanner {
 
   // ==================== 备忘录相关 ====================
   
-  // 加载备忘录
+  // 加载备忘录（同步版本，用于兼容）
   private loadMemos(): string[] {
     const saved = localStorage.getItem('dailyPlannerMemos');
     return saved ? JSON.parse(saved) : [];
   }
 
+  // 加载备忘录（异步版本，优先使用 Electron 文件存储）
+  private async loadMemosAsync(): Promise<string[]> {
+    // 优先使用 Electron 文件存储
+    if (window.electronAPI?.loadMemosFile) {
+      try {
+        const data = await window.electronAPI.loadMemosFile();
+        if (data && data.length > 0) {
+          // 如果文件存储有数据，同步到 localStorage 作为备份
+          localStorage.setItem('dailyPlannerMemos', JSON.stringify(data));
+          return data;
+        }
+      } catch (error) {
+        console.error('从文件加载备忘录失败:', error);
+      }
+    }
+    // 回退到 localStorage
+    return this.loadMemos();
+  }
+
   // 保存备忘录
   private saveMemos(): void {
+    // 保存到 localStorage 作为备份
     localStorage.setItem('dailyPlannerMemos', JSON.stringify(this.memos));
+    // 同时保存到 Electron 文件存储
+    if (window.electronAPI?.saveMemosFile) {
+      window.electronAPI.saveMemosFile(this.memos).catch(error => {
+        console.error('保存备忘录到文件失败:', error);
+      });
+    }
   }
 
   // 显示备忘录面板（悬停时调用，只在面板未显示时才渲染）

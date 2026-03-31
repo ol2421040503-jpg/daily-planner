@@ -56,6 +56,7 @@ const REMINDER_CONFIG = {
 // 获取用户数据目录
 const userDataPath = app.getPath('userData');
 const knowledgeFilePath = path.join(userDataPath, 'knowledge-guides.json');
+const memosFilePath = path.join(userDataPath, 'memos.json');
 
 // 保存知识库到文件
 function saveKnowledgeToFile(data) {
@@ -78,6 +79,31 @@ function loadKnowledgeFromFile() {
     return [];
   } catch (error) {
     console.error('加载知识库失败:', error);
+    return [];
+  }
+}
+
+// 保存备忘录到文件
+function saveMemosToFile(data) {
+  try {
+    fs.writeFileSync(memosFilePath, JSON.stringify(data, null, 2), 'utf-8');
+    return { success: true };
+  } catch (error) {
+    console.error('保存备忘录失败:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// 从文件加载备忘录
+function loadMemosFromFile() {
+  try {
+    if (fs.existsSync(memosFilePath)) {
+      const data = fs.readFileSync(memosFilePath, 'utf-8');
+      return JSON.parse(data);
+    }
+    return [];
+  } catch (error) {
+    console.error('加载备忘录失败:', error);
     return [];
   }
 }
@@ -690,6 +716,16 @@ ipcMain.handle('save-knowledge-file', (event, data) => {
 // 从文件加载知识库
 ipcMain.handle('load-knowledge-file', () => {
   return loadKnowledgeFromFile();
+});
+
+// 保存备忘录到文件
+ipcMain.handle('save-memos-file', (event, data) => {
+  return saveMemosToFile(data);
+});
+
+// 从文件加载备忘录
+ipcMain.handle('load-memos-file', () => {
+  return loadMemosFromFile();
 });
 
 // ==================== 自动更新 IPC ====================

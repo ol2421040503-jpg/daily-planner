@@ -157,6 +157,8 @@ declare global {
       // 文件存储
       saveKnowledgeFile: (data: unknown) => Promise<{ success: boolean; error?: string }>;
       loadKnowledgeFile: () => Promise<unknown[]>;
+      saveMemosFile: (data: string[]) => Promise<{ success: boolean; error?: string }>;
+      loadMemosFile: () => Promise<string[]>;
       // 窗口控制
       minimizeToTray: () => void;
       toggleMaximize: () => void;

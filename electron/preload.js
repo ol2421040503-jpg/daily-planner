@@ -187,6 +187,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke('load-knowledge-file');
   },
 
+  // 保存备忘录到文件
+  saveMemosFile: (data) => {
+    return ipcRenderer.invoke('save-memos-file', data);
+  },
+
+  // 从文件加载备忘录
+  loadMemosFile: () => {
+    return ipcRenderer.invoke('load-memos-file');
+  },
+
   // ==================== 截图功能 ====================
   
   // 开始截图
