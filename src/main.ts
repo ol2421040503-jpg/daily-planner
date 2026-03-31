@@ -8963,7 +8963,8 @@ class DailyPlanner {
 
       weekDaysHTML += `
         <div class="flex-1 ${bgClass} rounded-lg shadow-lg p-3 ${isToday ? 'ring-2 ring-blue-500' : ''} min-w-[120px] cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all"
-             onclick="planner.selectDate(new Date(${year}, ${month}, ${day}))"
+             data-date="${dateKey}"
+             onclick="event.stopPropagation(); planner.selectDate(new Date(${year}, ${month}, ${day}))"
              ondragover="event.preventDefault()"
              ondrop="planner.onDateDrop(event, new Date(${year}, ${month}, ${day}))">
           <div class="text-center mb-2 pb-2 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}">
@@ -8971,7 +8972,7 @@ class DailyPlanner {
             <div class="text-xl font-bold ${textClass}">${date.getDate()}</div>
             <div class="text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}">${lunarText}</div>
           </div>
-          <div class="space-y-1 max-h-48 overflow-y-auto" onclick="planner.selectDate(new Date(${year}, ${month}, ${day}))">
+          <div class="space-y-1 max-h-48 overflow-y-auto">
             ${dayTasks.length > 0 ? [...dayTasks].sort((a, b) => {
               // 已完成的任务放最后
               if (a.completed !== b.completed) return a.completed ? 1 : -1;
@@ -8985,8 +8986,8 @@ class DailyPlanner {
               const taskPriority = (task.priority || 'normal') as TaskPriority;
               const priorityConfig = PRIORITY_CONFIG[taskPriority] || PRIORITY_CONFIG['normal'];
               return `
-              <div class="p-2 rounded ${task.completed ? 'bg-gray-100 dark:bg-gray-700' : isDark ? 'bg-gray-700' : 'bg-gray-50'} border-l-2 ${priorityConfig.borderColor}"
-                   onclick="planner.selectDate(new Date(${year}, ${month}, ${day}))">
+              <div class="p-2 rounded ${task.completed ? 'bg-gray-100 dark:bg-gray-700' : isDark ? 'bg-gray-700' : 'bg-gray-50'} border-l-2 ${priorityConfig.borderColor} cursor-pointer hover:opacity-80 transition-opacity"
+                   onclick="event.stopPropagation(); planner.selectDate(new Date(${year}, ${month}, ${day}))">
                 <div class="flex items-center gap-1">
                   <input type="checkbox" ${task.completed ? 'checked' : ''} 
                          onclick="event.stopPropagation(); planner.selectedDate = new Date(${year}, ${month}, ${day}); planner.toggleTask('${task.id}');"
