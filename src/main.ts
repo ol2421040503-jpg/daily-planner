@@ -1452,6 +1452,9 @@ class DailyPlanner {
     switch (this.taskSortBy) {
       case 'priority':
         sorted.sort((a, b) => {
+          // 已完成的任务放最后
+          if (a.completed !== b.completed) return a.completed ? 1 : -1;
+          // 未完成任务按优先级排序
           const pa = getPriorityConfig(a.priority).order;
           const pb = getPriorityConfig(b.priority).order;
           if (pa !== pb) return pa - pb;
@@ -1465,10 +1468,18 @@ class DailyPlanner {
         });
         break;
       case 'time':
-        sorted.sort((a, b) => a.time.localeCompare(b.time));
+        sorted.sort((a, b) => {
+          // 已完成的任务放最后
+          if (a.completed !== b.completed) return a.completed ? 1 : -1;
+          return a.time.localeCompare(b.time);
+        });
         break;
       case 'text':
-        sorted.sort((a, b) => a.text.localeCompare(b.text));
+        sorted.sort((a, b) => {
+          // 已完成的任务放最后
+          if (a.completed !== b.completed) return a.completed ? 1 : -1;
+          return a.text.localeCompare(b.text);
+        });
         break;
     }
     
