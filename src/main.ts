@@ -9287,19 +9287,6 @@ class DailyPlanner {
                 ` : ''}
               </div>
               <div class="relative">
-                <button onclick="event.stopPropagation(); planner.toggleNotificationPanel()"
-                        class="p-2 ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-white hover:bg-gray-100'} rounded-lg transition-colors shadow-md relative"
-                        title="通知">
-                  <svg class="w-5 h-5 ${isDark ? 'text-gray-200' : 'text-gray-700'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                  </svg>
-                  ${this.getUnreadCount() > 0 ? `
-                    <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">${this.getUnreadCount() > 9 ? '9+' : this.getUnreadCount()}</span>
-                  ` : ''}
-                </button>
-                ${this.showNotificationPanel ? this.generateNotificationPanelHTML() : ''}
-              </div>
-              <div class="relative">
                 <button onclick="event.stopPropagation(); planner.toggleMoreMenu()"
                         class="p-2 ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-white hover:bg-gray-100'} rounded-lg transition-colors shadow-md"
                         title="更多功能"
