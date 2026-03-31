@@ -4618,7 +4618,7 @@ class DailyPlanner {
   }
 
   // 选择日期（点击固定显示）
-  public selectDate(date: Date): void {
+  private selectDate(date: Date): void {
     // 清除悬停定时器
     if (this.hoverTimer !== null) {
       clearTimeout(this.hoverTimer);
@@ -4641,8 +4641,9 @@ class DailyPlanner {
     this.showQuadrantView = false;
     this.currentGuide = null;
     
-    // 渲染页面以显示面板
-    this.render();
+    // 快速更新：只更新日历选中状态和任务面板
+    this.updateCalendarSelection();
+    this.updateTaskPanelQuick();
   }
 
   // 快速更新任务面板（不重新渲染整个页面）
