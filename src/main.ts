@@ -6147,9 +6147,9 @@ class DailyPlanner {
     const inputBg = isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300';
     const cardBg = isDark ? 'bg-gray-700' : 'bg-gray-50';
     
-    // 入口按钮（右下角）
+    // 入口按钮（左上角）
     const entryButton = `
-      <div class="fixed right-4 bottom-4 z-30 memo-panel-container"
+      <div class="fixed left-4 top-4 z-30 memo-panel-container"
            onmouseenter="planner.openMemoPanelHover();"
            onmouseleave="planner.checkCloseMemoPanel(event);">
         <!-- 备忘录入口按钮 -->
@@ -6166,7 +6166,7 @@ class DailyPlanner {
         
         <!-- 悬停面板 -->
         ${this.showMemoPanel ? `
-          <div class="absolute right-0 bottom-12 w-72 ${bgClass} rounded-xl shadow-2xl border ${isDark ? 'border-gray-700' : 'border-gray-200'} overflow-hidden pb-2"
+          <div class="absolute left-0 top-12 w-72 ${bgClass} rounded-xl shadow-2xl border ${isDark ? 'border-gray-700' : 'border-gray-200'} overflow-hidden pb-2"
                onmouseenter="planner.keepMemoPanelOpen();">
             <!-- 标题栏 -->
             <div class="px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between">
