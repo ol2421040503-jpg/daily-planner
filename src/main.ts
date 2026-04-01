@@ -22,9 +22,15 @@ const IMAGE_COMPRESSION_CONFIG = {
 };
 
 // ==================== 版本配置 ====================
-const APP_VERSION = '1.7.5';
+const APP_VERSION = '1.7.6';
 const VERSION_CHECK_URL = 'https://your-server.com/api/version'; // 替换为你的版本检查API
 const RELEASE_NOTES: Record<string, string[]> = {
+  '1.7.6': [
+    '🔧 修复自动更新 SHA512 校验失败问题',
+    '🔄 循环日程支持永久循环（生成未来1年任务）',
+    '💾 备忘录数据持久化存储',
+    '📊 任务排序优化：未完成优先级高的在上'
+  ],
   '1.7.5': [
     '🔄 循环日程支持永久循环（生成未来1年任务）',
     '💾 备忘录数据持久化存储',
