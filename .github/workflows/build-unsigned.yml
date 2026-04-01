@@ -125,23 +125,23 @@ jobs:
           echo "Release ID: ${RELEASE_ID}"
           echo "release_id=${RELEASE_ID}" >> $GITHUB_OUTPUT
 
-      - name: Upload latest.yml to Gitee
+      - name: Upload all files to Gitee
         env:
           RELEASE_ID: ${{ steps.create_release.outputs.release_id }}
         run: |
-          echo "📤 上传 latest.yml 到 Gitee..."
+          echo "📤 上传所有安装文件到 Gitee..."
           
-          # 找到 latest.yml 文件
-          YML_FILE=$(find ./installer -name "latest.yml" | head -1)
+          # 上传所有文件（exe, yml, blockmap）
+          for FILE in ./installer/*; do
+            if [ -f "$FILE" ]; then
+              FILENAME=$(basename "$FILE")
+              echo "上传: $FILENAME"
+              curl -s -X POST \
+                "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases/${RELEASE_ID}/attach_files" \
+                -F "access_token=${{ secrets.GITEE_TOKEN }}" \
+                -F "file=@${FILE}"
+              echo ""
+            fi
+          done
           
-          if [ -n "$YML_FILE" ]; then
-            echo "上传: $(basename $YML_FILE)"
-            curl -s -X POST \
-              "https://gitee.com/api/v5/repos/europe-and-oceania/daily-planner/releases/${RELEASE_ID}/attach_files" \
-              -F "access_token=${{ secrets.GITEE_TOKEN }}" \
-              -F "file=@${YML_FILE}"
-            echo ""
-            echo "✅ latest.yml 上传完成"
-          else
-            echo "❌ 未找到 latest.yml 文件"
-          fi
+          echo "✅ 所有文件上传完成"
