@@ -498,6 +498,7 @@ interface RecurringSchedule {
   monthDay?: number;         // 按月循环：每月几号 (1-31)
   createdAt: string;         // 创建时间
   startDate: string;         // 开始日期 YYYY-MM-DD
+  excludedDates?: string[];  // 已手动删除的日期列表 YYYY-MM-DD[]
 }
 
 interface MonthlyStats {
@@ -3394,6 +3395,11 @@ class DailyPlanner {
         if (shouldCreate && d >= startDate) {
           const dateKey = this.formatDate(d);
           
+          // 跳过已手动删除的日期
+          if (schedule.excludedDates && schedule.excludedDates.includes(dateKey)) {
+            continue;
+          }
+          
           // 检查是否已存在该循环日程的任务
           if (!this.tasks[dateKey]) {
             this.tasks[dateKey] = [];
@@ -3796,6 +3802,18 @@ class DailyPlanner {
     if (!this.selectedDate) return;
     const dateKey = this.formatDate(this.selectedDate);
     if (this.tasks[dateKey]) {
+      const task = this.tasks[dateKey].find(t => t.id === taskId);
+      if (task && task.recurringScheduleId) {
+        // 循环日程：记录被排除的日期，避免重启后重新生成
+        const schedule = this.recurringSchedules.find(s => s.id === task.recurringScheduleId);
+        if (schedule) {
+          if (!schedule.excludedDates) schedule.excludedDates = [];
+          if (!schedule.excludedDates.includes(dateKey)) {
+            schedule.excludedDates.push(dateKey);
+          }
+          this.saveRecurringSchedules();
+        }
+      }
       this.tasks[dateKey] = this.tasks[dateKey].filter(task => task.id !== taskId);
       this.saveTasks();
       this.render(); // 重新渲染整个页面
