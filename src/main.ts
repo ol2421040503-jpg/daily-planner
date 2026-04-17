@@ -611,6 +611,7 @@ class DailyPlanner {
   private showReminderSettings: boolean = false;  // 显示提醒设置弹窗
   private showShortcutHelp: boolean = false;  // 显示快捷键帮助弹窗
   private showContactInfo: boolean = false;  // 显示联系作者弹窗
+  private showChangelog: boolean = false;  // 显示更新日志弹窗
   private showMonthPicker: boolean = false;  // 显示月份选择器
   private yearRangeOffset: number = 0;  // 年份选择器偏移量
   private selectedPickerYear: number = 0;  // 月份选择器中选中的年份
@@ -5917,6 +5918,71 @@ class DailyPlanner {
   }
 
   // 生成联系作者弹窗
+  // 生成更新日志弹窗HTML
+  private generateChangelogHTML(): string {
+    if (!this.showChangelog) return '';
+
+    const isDark = this.themeMode === 'dark';
+    const bgClass = isDark ? 'bg-gray-800' : 'bg-white';
+    const textClass = isDark ? 'text-gray-100' : 'text-gray-800';
+    const labelClass = isDark ? 'text-gray-400' : 'text-gray-500';
+    const cardBg = isDark ? 'bg-gray-700' : 'bg-gray-50';
+
+    // 从 RELEASE_NOTES 生成更新日志列表，最新版本在前
+    const versionEntries = Object.entries(RELEASE_NOTES).sort(([a], [b]) => {
+      // 按版本号排序，最新版本在前
+      const [aMajor, aMinor, aPatch] = a.split('.').map(Number);
+      const [bMajor, bMinor, bPatch] = b.split('.').map(Number);
+      if (aMajor !== bMajor) return bMajor - aMajor;
+      if (aMinor !== bMinor) return bMinor - aMinor;
+      return bPatch - aPatch;
+    });
+
+    return `
+      <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
+           onclick="planner.showChangelog = false; planner.render();">
+        <div class="${bgClass} rounded-xl shadow-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col"
+             onclick="event.stopPropagation()">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold ${textClass} flex items-center gap-2">
+              <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7m0 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+              </svg>
+              更新日志
+            </h2>
+            <button onclick="planner.showChangelog = false; planner.render();"
+                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+              <svg class="w-5 h-5 ${isDark ? 'text-gray-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="flex-1 overflow-y-auto space-y-4 pr-2">
+            ${versionEntries.map(([version, notes]) => `
+              <div class="${cardBg} rounded-lg p-4">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="px-2.5 py-0.5 rounded-full text-sm font-medium ${isDark ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-700'}">
+                    v${version}
+                  </span>
+                  ${version === APP_VERSION ? `<span class="px-2 py-0.5 rounded text-xs font-medium ${isDark ? 'bg-green-900 text-green-300' : 'bg-green-100 text-green-700'}">当前版本</span>` : ''}
+                </div>
+                <ul class="space-y-1.5">
+                  ${notes.map(note => `
+                    <li class="flex items-start gap-2 ${labelClass} text-sm">
+                      <span class="flex-shrink-0 mt-0.5">•</span>
+                      <span>${note}</span>
+                    </li>
+                  `).join('')}
+                </ul>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   private generateContactInfoHTML(): string {
     if (!this.showContactInfo) return '';
     
@@ -6847,6 +6913,14 @@ class DailyPlanner {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
             导出 CSV
+          </button>
+          <div class="border-t ${isDark ? 'border-gray-700' : ''} my-1"></div>
+          <button onclick="planner.showChangelog = true; planner.showMoreMenu = false; planner.render();"
+                  class="flex items-center gap-2 px-4 py-2 w-full ${textClass} ${hoverClass} transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7m0 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+            </svg>
+            更新日志
           </button>
           <div class="border-t ${isDark ? 'border-gray-700' : ''} my-1"></div>
           <button onclick="planner.checkForUpdate(); planner.showMoreMenu = false;"
@@ -9369,6 +9443,7 @@ class DailyPlanner {
       ${this.generateUpdateModalHTML()}
       ${this.generateShortcutHelpHTML()}
       ${this.generateContactInfoHTML()}
+      ${this.generateChangelogHTML()}
       ${this.generateRecurringScheduleModalHTML()}
       ${this.generateMemoPanelHTML()}
       ${this.generateKnowledgeBaseHTML()}
@@ -9421,6 +9496,7 @@ export function initApp(): void {
       planner.searchQuery = '';
       planner.showYearlyStats = false;
       planner.showAnniversaryModal = false;
+      planner.showChangelog = false;
       planner.showMoreMenu = false;
       if (planner.selectedDate) {
         planner.selectedDate = null;
