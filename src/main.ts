@@ -22,13 +22,19 @@ const IMAGE_COMPRESSION_CONFIG = {
 };
 
 // ==================== 版本配置 ====================
-const APP_VERSION = '1.7.8';
+const APP_VERSION = '1.7.9';
 const VERSION_CHECK_URL = 'https://your-server.com/api/version'; // 替换为你的版本检查API
 const RELEASE_NOTES: Record<string, string[]> = {
   '1.7.8': [
     '设置页面新增更新日志功能，最新版本在前并标注当前版本'
   ],
-  '1.7.7': [
+  '1.7.9': [
+    '🐛 修复节假日日期错误（2025中秋节、2026/2027端午节）'
+  ],
+  '1.7.8': [
+    '📋 设置页面新增更新日志功能',
+    '✨ 最新版本在前并标注当前版本'
+  ],
     '修复循环任务删除后重启恢复的 bug'
   ],
   '1.7.6': [
