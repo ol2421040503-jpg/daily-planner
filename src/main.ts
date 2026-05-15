@@ -1855,13 +1855,13 @@ class DailyPlanner {
       // 端午调休
       holidays['2025-05-25'] = { date: '2025-05-25', name: '端午节', holiday: false, wage: 1 };
       
-      // 中秋节+国庆节（连休）
+      // 中秋节+国庆节（连休），农历八月十五是10月6日
       holidays['2025-10-01'] = { date: '2025-10-01', name: '国庆节', holiday: true, wage: 3 };
       holidays['2025-10-02'] = { date: '2025-10-02', name: '国庆节', holiday: true, wage: 3 };
       holidays['2025-10-03'] = { date: '2025-10-03', name: '国庆节', holiday: true, wage: 3 };
-      holidays['2025-10-04'] = { date: '2025-10-04', name: '中秋节', holiday: true, wage: 3 };
+      holidays['2025-10-04'] = { date: '2025-10-04', name: '国庆节', holiday: true, wage: 1 };
       holidays['2025-10-05'] = { date: '2025-10-05', name: '国庆节', holiday: true, wage: 1 };
-      holidays['2025-10-06'] = { date: '2025-10-06', name: '国庆节', holiday: true, wage: 1 };
+      holidays['2025-10-06'] = { date: '2025-10-06', name: '中秋节', holiday: true, wage: 3 };
       holidays['2025-10-07'] = { date: '2025-10-07', name: '国庆节', holiday: true, wage: 1 };
       holidays['2025-10-08'] = { date: '2025-10-08', name: '国庆节', holiday: true, wage: 1 };
       // 国庆调休
@@ -1907,11 +1907,12 @@ class DailyPlanner {
       // 劳动节调休
       holidays['2026-04-26'] = { date: '2026-04-26', name: '劳动节', holiday: false, wage: 1 }; // 周日上班
       
-      // 端午节：农历五月初五是5月31日（周日）
-      holidays['2026-05-30'] = { date: '2026-05-30', name: '端午节', holiday: true, wage: 1 };
-      holidays['2026-05-31'] = { date: '2026-05-31', name: '端午节', holiday: true, wage: 3 };
-      holidays['2026-06-01'] = { date: '2026-06-01', name: '端午节', holiday: true, wage: 1 };
-      // 无需调休
+      // 端午节：农历五月初五是6月19日（周五），放假6月19-21日
+      holidays['2026-06-19'] = { date: '2026-06-19', name: '端午节', holiday: true, wage: 3 };
+      holidays['2026-06-20'] = { date: '2026-06-20', name: '端午节', holiday: true, wage: 1 };
+      holidays['2026-06-21'] = { date: '2026-06-21', name: '端午节', holiday: true, wage: 1 };
+      // 端午调休
+      holidays['2026-06-14'] = { date: '2026-06-14', name: '端午节', holiday: false, wage: 1 }; // 周日上班
       
       // 中秋节：农历八月十五是9月25日（周五）
       holidays['2026-09-25'] = { date: '2026-09-25', name: '中秋节', holiday: true, wage: 3 };
@@ -1967,10 +1968,10 @@ class DailyPlanner {
       holidays['2027-04-25'] = { date: '2027-04-25', name: '劳动节', holiday: false, wage: 1 }; // 周日上班
       holidays['2027-05-08'] = { date: '2027-05-08', name: '劳动节', holiday: false, wage: 1 }; // 周六上班
       
-      // 端午节：农历五月初五是6月5日（周六），放假6月5-7日
-      holidays['2027-06-05'] = { date: '2027-06-05', name: '端午节', holiday: true, wage: 3 };
-      holidays['2027-06-06'] = { date: '2027-06-06', name: '端午节', holiday: true, wage: 1 };
-      holidays['2027-06-07'] = { date: '2027-06-07', name: '端午节', holiday: true, wage: 1 };
+      // 端午节：农历五月初五是6月9日（周三），放假6月9-11日
+      holidays['2027-06-09'] = { date: '2027-06-09', name: '端午节', holiday: true, wage: 3 };
+      holidays['2027-06-10'] = { date: '2027-06-10', name: '端午节', holiday: true, wage: 1 };
+      holidays['2027-06-11'] = { date: '2027-06-11', name: '端午节', holiday: true, wage: 1 };
       // 无需调休
       
       // 中秋节：农历八月十五是9月15日（周三），放假9月15-17日
